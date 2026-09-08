@@ -1,0 +1,344 @@
+# Plan de Implementación — Agencia N°5801 (Simulación)
+
+> **Foco actual:** Fases 1 y 2 — Fundaciones + Autenticación con página básica funcional.
+> Las fases 3–9 quedan documentadas al final para referencia futura.
+
+---
+
+## Decisiones Tomadas
+
+| Tema | Decisión |
+|------|----------|
+| Base de datos | **MySQL** vía Laragon |
+| Nombre de agencia | **Agencia N°5801** |
+| Cloudflare Turnstile | **Claves de testing** (siempre aprueban en localhost) |
+| SMTP | **Mailtrap** durante desarrollo |
+| Tests | Pendiente decisión del usuario (ver sección abajo) |
+| Jurisdicciones | Pendiente decisión del usuario (ver sección abajo) |
+
+---
+
+## Revisión Requerida
+
+> [!IMPORTANT]
+> ### ¿Qué jurisdicciones incluimos para Quiniela Tradicional?
+>
+> En Argentina, la Quiniela se juega en distintas **jurisdicciones** (organismos provinciales y nacionales de lotería). Cada una tiene sus propios sorteos (mañana, tarde, noche, nocturna). Las más comunes son:
+>
+> | Clave | Jurisdicción |
+> |-------|-------------|
+> | `nacional` | Lotería Nacional (Nación) |
+> | `provincia` | Lotería Provincia de Buenos Aires |
+> | `santa_fe` | Lotería de Santa Fe |
+> | `cordoba` | Lotería de Córdoba |
+> | `entre_rios` | Lotería de Entre Ríos |
+> | `montevideo` | Montevideo (Uruguay) — a veces incluida |
+>
+> **Opciones:**
+> - **A) Usar las 4 principales** (Nación, Provincia Bs As, Santa Fe, Córdoba) — simple y real.
+> - **B) Solo Nación y Provincia** — minimalista para el prototipo.
+> - **C) Definís vos las que conocés** — podés escribirme cuáles aplican a tu contexto.
+
+> [!IMPORTANT]
+> ### ¿Qué nivel de tests querés?
+>
+> Aquí te explico qué significa cada opción para que puedas decidir:
+>
+> **¿Qué son los Integration Tests (tests de integración)?**
+> Son pruebas automáticas que simulan el comportamiento real del sistema sin que tengas que hacer clic manualmente. Por ejemplo: "simula que un usuario se registra → la app guarda los datos en la BD → el admin recibe el email". Si algo falla (un campo de DB mal, una validación rota), el test lo detecta automáticamente.
+>
+> **Opciones:**
+>
+> | Opción | Qué implica | Cuándo conviene |
+> |--------|-------------|----------------|
+> | **A) Tests desde el inicio (recomendado)** | Cada módulo se construye con tests. Más tiempo al principio, pero detecta bugs automáticamente y da seguridad al refactorizar. | Querés aprender buenas prácticas y tener una base sólida. |
+> | **B) Tests al final** | Se desarrolla todo el sistema y se agregan tests al terminar. Riesgo de que los tests sean más difíciles de escribir porque el código no fue diseñado para testear. | Querés ver resultados visuales rápido y los tests son secundarios. |
+> | **C) Sin tests por ahora** | Se omiten completamente en esta versión. Solo verificación manual. | El proyecto es estrictamente demostrativo y no lo vas a mantener. |
+
+---
+
+## Fase 1 — Fundaciones (MySQL, Migraciones, Seeders)
+
+### 1.1 Configuración del entorno
+
+#### [MODIFY] `.env`
+Cambios específicos:
+```diff
+- DB_CONNECTION=sqlite
++ DB_CONNECTION=mysql
++ DB_HOST=127.0.0.1
++ DB_PORT=3306
++ DB_DATABASE=agencia_quiniela
++ DB_USERNAME=root
++ DB_PASSWORD=
+
+- APP_NAME=Laravel
++ APP_NAME="Agencia N°5801"
+
+- SESSION_LIFETIME=120
++ SESSION_LIFETIME=5
+
+- MAIL_MAILER=log
+- MAIL_HOST=127.0.0.1
+- MAIL_PORT=2525
++ MAIL_MAILER=smtp
++ MAIL_HOST=sandbox.smtp.mailtrap.io
++ MAIL_PORT=2525
++ MAIL_USERNAME=<tu_usuario_mailtrap>
++ MAIL_PASSWORD=<tu_password_mailtrap>
++ MAIL_FROM_ADDRESS="sistema@agencia5801.local"
++ MAIL_FROM_NAME="Agencia N°5801 (Sistema)"
+
++ TURNSTILE_SITE_KEY=1x00000000000000000000AA
++ TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
++ APP_URL=http://germanBianchi_agenciaQ.test
+```
+
+> [!NOTE]
+> Las claves de Turnstile son las **oficiales de testing** de Cloudflare para localhost — no necesitás cuenta.
+> La contraseña de MySQL en Laragon es vacía por defecto (`DB_PASSWORD=`).
+
+#### Crear la base de datos MySQL
+Ejecutaremos:
+```sql
+CREATE DATABASE agencia_quiniela CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+Esto lo hacemos vía `php artisan db` o directamente desde HeidiSQL/phpMyAdmin de Laragon.
+
+---
+
+### 1.2 Migraciones
+
+#### [MODIFY] `migrations/0001_01_01_000000_create_users_table.php`
+Agrega `dni` y `rol` a la tabla `users` existente:
+```php
+$table->string('dni', 20)->unique()->after('name');
+$table->enum('rol', ['cliente', 'admin'])->default('cliente')->after('email');
+```
+
+#### [NEW] `migrations/..._create_jugadas_table.php`
+Tabla maestra de apuestas:
+- `id`, `user_id` (FK), `modalidad` (enum), `monto_total` (decimal), `precio_unitario_snapshot` (decimal), `estado` (enum: pendiente/procesado/error_envio), `idempotency_token` (uuid, unique), `timestamps`.
+
+#### [NEW] `migrations/..._create_detalles_quiniela_table.php`
+- `jugada_id` (FK), `numero` (string 4), `posicion` (tinyint 1–20), `jurisdiccion` (string), `importe` (decimal).
+
+#### [NEW] `migrations/..._create_detalles_quini6_table.php`
+- `jugada_id` (FK), `numeros` (JSON — 6 enteros 0–45).
+
+#### [NEW] `migrations/..._create_detalles_lotoplus_table.php`
+- `jugada_id` (FK), `numeros` (JSON — 6 enteros 0–45), `numero_plus` (tinyint 0–9).
+
+#### [NEW] `migrations/..._create_detalles_loto5_table.php`
+- `jugada_id` (FK), `numeros` (JSON — 5 enteros 0–36).
+
+#### [NEW] `migrations/..._create_detalles_quiniela_poceada_table.php`
+- `jugada_id` (FK), `numeros` (JSON — 8 enteros de 2 cifras, 00–99).
+
+#### [NEW] `migrations/..._create_precios_historicos_table.php`
+- `id`, `tipo_juego` (string), `valor` (decimal 10,2), `fecha_inicio` (date), `fecha_fin` (date, nullable).
+
+#### [NEW] `migrations/..._create_audit_logs_table.php`
+- `id`, `user_id` (nullable FK), `accion` (string), `descripcion` (text), `ip` (string 45), `timestamps`.
+
+---
+
+### 1.3 Modelos y Factories
+
+#### [NEW] `app/Models/Jugada.php`
+#### [NEW] `app/Models/DetalleQuiniela.php`, `DetalleQuini6.php`, `DetalleLotoPlus.php`, `DetalleLoto5.php`, `DetalleQuinielaPoceada.php`
+#### [NEW] `app/Models/PrecioHistorico.php`
+#### [NEW] `app/Models/AuditLog.php`
+#### [MODIFY] `database/factories/UserFactory.php` — agregar estados `admin()` y `cliente()` con DNI faker.
+
+---
+
+### 1.4 Seeders
+
+#### [NEW] `database/seeders/AdminSeeder.php`
+- Usuario: `admin@agencia5801.local` / `Admin1234!` / `rol = admin`.
+
+#### [NEW] `database/seeders/ClientesSeeder.php`
+- 5 clientes simulados con datos faker.
+
+#### [NEW] `database/seeders/PreciosSeeder.php`
+| Juego | Precio inicial |
+|-------|---------------|
+| Quini 6 | $1.200 |
+| Loto Plus | $1.500 |
+| Loto 5 | $800 |
+| Quiniela Poceada | $1.000 |
+
+#### [MODIFY] `database/seeders/DatabaseSeeder.php`
+- Llama a los tres seeders anteriores en orden.
+
+---
+
+### 1.5 Middleware
+
+#### [NEW] `app/Http/Middleware/AdminMiddleware.php`
+- Verifica sesión activa + `user->rol === 'admin'`.
+- Si no cumple: redirige a `/login` con mensaje de error.
+
+#### [MODIFY] `bootstrap/app.php`
+- Registrar el middleware con alias `auth.admin`.
+
+---
+
+## Fase 2 — Autenticación y Layout Base
+
+### 2.1 Controladores y Requests
+
+#### [NEW] `app/Http/Controllers/Auth/RegisterController.php`
+- Valida y registra: nombre, DNI (único), email (único), contraseña.
+- Loguea automáticamente al usuario post-registro y redirige a `/jugadas`.
+
+#### [NEW] `app/Http/Controllers/Auth/LoginController.php`
+- Login con email + contraseña. Throttle: 5 intentos / minuto.
+- Redirige a `/admin` si `rol = admin`, a `/jugadas` si `rol = cliente`.
+
+#### [NEW] `app/Http/Controllers/Auth/LogoutController.php`
+- Invalida sesión y redirige a `/`.
+
+#### [NEW] `app/Http/Requests/Auth/RegisterRequest.php`
+#### [NEW] `app/Http/Requests/Auth/LoginRequest.php`
+
+---
+
+### 2.2 Layouts Blade
+
+#### [NEW] `resources/views/layouts/app.blade.php`
+Layout para clientes:
+- Header: logo "Agencia N°5801", navegación (Inicio, Mis Jugadas), avatar/nombre de usuario, botón Cerrar Sesión.
+- Sección de contenido (`@yield('content')`).
+- Footer: nombre de la agencia + disclaimer académico.
+
+#### [NEW] `resources/views/layouts/admin.blade.php`
+Layout para backoffice:
+- Sidebar fijo: logo, links (Panel, Jugadas, Precios, Audit Log, Limpiar BD).
+- Header superior: nombre de sesión admin + logout.
+- Contenido principal.
+
+---
+
+### 2.3 Vistas de Autenticación
+
+#### [NEW] `resources/views/auth/register.blade.php`
+Campos: Nombre completo, DNI, Email, Contraseña, Confirmar contraseña. Botón Registrarse. Link a Login.
+
+#### [NEW] `resources/views/auth/login.blade.php`
+Campos: Email, Contraseña. Botón Ingresar. Link a Registro.
+
+#### [NEW] `resources/views/home.blade.php`
+**Página de inicio pública** (landing page básica):
+- Hero section: nombre de la agencia, subtítulo descriptivo.
+- Botones: "Iniciar Sesión" y "Registrarse".
+- Sección informativa de los juegos disponibles (cards: Quiniela, Quini 6, Loto Plus, Loto 5, Poceada).
+
+---
+
+### 2.4 Rutas (Fases 1 y 2)
+
+#### [MODIFY] `routes/web.php`
+```php
+// Públicas
+Route::get('/', [HomeController::class, 'index'])->name('home');
+
+// Autenticación (guest)
+Route::middleware('guest')->group(function () {
+    Route::get('/register', [RegisterController::class, 'create'])->name('register');
+    Route::post('/register', [RegisterController::class, 'store']);
+    Route::get('/login', [LoginController::class, 'create'])->name('login');
+    Route::post('/login', [LoginController::class, 'store']);
+});
+
+// Logout
+Route::post('/logout', [LogoutController::class, 'destroy'])->name('logout')->middleware('auth');
+
+// Panel cliente (placeholder para Fase 3)
+Route::middleware('auth')->group(function () {
+    Route::get('/jugadas', fn() => view('jugadas.index'))->name('jugadas.index');
+});
+
+// Panel admin (placeholder para Fase 6)
+Route::middleware(['auth', 'auth.admin'])->prefix('admin')->group(function () {
+    Route::get('/', fn() => view('admin.dashboard'))->name('admin.dashboard');
+});
+```
+
+---
+
+### 2.5 Frontend y CSS
+
+#### [NEW/MODIFY] `resources/css/app.css`
+Design system completo para Agencia N°5801:
+- Paleta: fondo oscuro (#0f1117), verde esmeralda (#00c896), dorado (#f5c518), acento azul profundo.
+- Tipografía: Google Fonts — **Outfit** (headings) + **Inter** (body).
+- Componentes: botones, inputs, cards de juegos, badges de estado, nav, footer.
+- Animaciones: hover en cards, transición suave en forms.
+
+#### [NEW] `public/images/` — Logo generado para "Agencia N°5801".
+
+---
+
+### 2.6 HomeController
+
+#### [NEW] `app/Http/Controllers/HomeController.php`
+- Retorna la vista `home` con info de los juegos disponibles.
+
+---
+
+## Página Básica de Prueba al Finalizar Fase 2
+
+Al completar estas dos fases tendrás acceso a:
+
+| URL | Qué verás |
+|-----|-----------|
+| `http://germanBianchi_agenciaQ.test/` | Landing page de la agencia con cards de juegos |
+| `http://germanBianchi_agenciaQ.test/register` | Formulario de registro (nombre, DNI, email, contraseña) |
+| `http://germanBianchi_agenciaQ.test/login` | Formulario de login |
+| `http://germanBianchi_agenciaQ.test/jugadas` | Página placeholder "Panel del Cliente" (requiere login) |
+| `http://germanBianchi_agenciaQ.test/admin` | Página placeholder "Backoffice" (requiere login admin) |
+
+Las cuentas de prueba estarán disponibles vía seeders:
+- **Admin:** `admin@agencia5801.local` / `Admin1234!`
+- **Clientes:** 5 cuentas generadas automáticamente.
+
+---
+
+## Verificación de Fases 1 y 2
+
+```bash
+# 1. Crear BD y migrar
+php artisan migrate --seed
+
+# 2. Verificar conexión MySQL
+php artisan db:show
+
+# 3. Compilar assets
+npm run build
+
+# 4. Levantar servidor
+php artisan serve
+```
+
+Verificación manual:
+1. Acceder a `/` → ver landing page con diseño de la agencia.
+2. Registrar un cliente nuevo → login automático → ver placeholder de jugadas.
+3. Login como `admin@agencia5801.local` → redirige a `/admin`.
+4. Intentar acceder a `/admin` como cliente → redirigido a login.
+5. Intentar acceder a `/jugadas` sin sesión → redirigido a login.
+
+---
+
+## Fases Futuras (referencia)
+
+| Fase | Alcance | Estado |
+|------|---------|--------|
+| **3** | Motor de jugadas (5 modalidades) + JS en tiempo real | ⏳ Pendiente |
+| **4** | Generación de PDF con DomPDF | ⏳ Pendiente |
+| **5** | Notificaciones SMTP (Mailtrap → Gmail) | ⏳ Pendiente |
+| **6** | Backoffice admin completo | ⏳ Pendiente |
+| **7** | Seguridad (timeout, audit log, backup script) | ⏳ Pendiente |
+| **8** | Polish de frontend y assets | ⏳ Pendiente |
+| **9** | Tests (decisión pendiente) | ⏳ Pendiente |

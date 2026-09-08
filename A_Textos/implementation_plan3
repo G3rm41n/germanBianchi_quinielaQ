@@ -1,0 +1,596 @@
+# Plan de Implementación Final — Agencia N°5801
+## Fases 1 y 2: Fundaciones + Autenticación
+
+---
+
+## ✅ Decisiones Cerradas
+
+| Tema | Decisión |
+|------|----------|
+| Base de datos | **MySQL** — Laragon (root, sin contraseña) |
+| Nombre de agencia | **Agencia N°5801** |
+| Jurisdicciones | **4 principales**: Nación · Prov. Buenos Aires · Santa Fe · Córdoba |
+| Turnstile | **Claves de testing** oficiales de Cloudflare (localhost) |
+| SMTP | **Mailtrap** durante desarrollo |
+| Tests | **Opción A** — Pest desde el inicio, por módulo |
+| APP_URL | `http://germanBianchi_agenciaQ.test` (Laragon) |
+
+---
+
+## Orden de Ejecución
+
+```
+Paso 1 → Entorno (.env, BD MySQL)
+Paso 2 → Migraciones (8 tablas)
+Paso 3 → Modelos + Factories
+Paso 4 → Seeders
+Paso 5 → Middleware de admin
+Paso 6 → Controladores y Requests de Auth
+Paso 7 → Layouts Blade + Vistas
+Paso 8 → Rutas
+Paso 9 → CSS + Assets
+Paso 10 → Tests Pest (Fase 1 y 2)
+Paso 11 → Verificación final
+```
+
+---
+
+## Paso 1 — Configuración del Entorno
+
+### [MODIFY] `.env`
+
+```diff
+- APP_NAME=Laravel
++ APP_NAME="Agencia N°5801"
+  APP_ENV=local
+  APP_DEBUG=true
+- APP_URL=http://localhost:8000
++ APP_URL=http://germanBianchi_agenciaQ.test
+
+- DB_CONNECTION=sqlite
+- # DB_HOST=127.0.0.1
+- # DB_PORT=3306
+- # DB_DATABASE=laravel
+- # DB_USERNAME=root
+- # DB_PASSWORD=
++ DB_CONNECTION=mysql
++ DB_HOST=127.0.0.1
++ DB_PORT=3306
++ DB_DATABASE=agencia_quiniela
++ DB_USERNAME=root
++ DB_PASSWORD=
+
+- SESSION_LIFETIME=120
++ SESSION_LIFETIME=5
+  SESSION_DRIVER=database
+
+- MAIL_MAILER=log
+- MAIL_HOST=127.0.0.1
+- MAIL_PORT=2525
+- MAIL_USERNAME=null
+- MAIL_PASSWORD=null
+- MAIL_FROM_ADDRESS="hello@example.com"
+- MAIL_FROM_NAME="${APP_NAME}"
++ MAIL_MAILER=smtp
++ MAIL_HOST=sandbox.smtp.mailtrap.io
++ MAIL_PORT=2525
++ MAIL_USERNAME=<TU_USUARIO_MAILTRAP>
++ MAIL_PASSWORD=<TU_PASSWORD_MAILTRAP>
++ MAIL_FROM_ADDRESS="sistema@agencia5801.local"
++ MAIL_FROM_NAME="Agencia N°5801 (Sistema)"
+
++ # Cloudflare Turnstile — claves oficiales de testing
++ TURNSTILE_SITE_KEY=1x00000000000000000000AA
++ TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+
++ APP_LOCALE=es
++ APP_FAKER_LOCALE=es_AR
+```
+
+> [!NOTE]
+> Para obtener tus credenciales de Mailtrap: entrá a [mailtrap.io](https://mailtrap.io) → My Inbox → SMTP Settings → seleccioná Laravel en el dropdown. Copiá usuario y contraseña.
+
+### [MODIFY] `.env.example`
+Mismo contenido que `.env` pero con valores en blanco/placeholder para que sirva de referencia.
+
+### Crear la base de datos MySQL
+```sql
+-- Ejecutar via HeidiSQL, phpMyAdmin de Laragon, o php artisan db
+CREATE DATABASE agencia_quiniela
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+```
+
+---
+
+## Paso 2 — Migraciones
+
+### [MODIFY] `database/migrations/0001_01_01_000000_create_users_table.php`
+Agregar `dni` y `rol` a la tabla `users`:
+```php
+$table->string('dni', 20)->unique()->after('name');
+$table->enum('rol', ['cliente', 'admin'])->default('cliente')->after('email');
+```
+
+---
+
+### [NEW] `database/migrations/YYYY_MM_DD_create_jugadas_table.php`
+Tabla maestra de apuestas.
+
+| Campo | Tipo | Detalles |
+|-------|------|----------|
+| `id` | bigint unsigned PK | auto-increment |
+| `user_id` | FK → users | cascade delete |
+| `modalidad` | enum | quiniela / quini6 / lotoplus / loto5 / poceada |
+| `monto_total` | decimal(10,2) | Costo total snapshot |
+| `precio_unitario_snapshot` | decimal(10,2) | Precio vigente al momento del registro |
+| `estado` | enum | pendiente / procesado / error_envio |
+| `idempotency_token` | uuid | unique — previene doble submit |
+| `timestamps` | — | created_at / updated_at |
+
+---
+
+### [NEW] `database/migrations/YYYY_MM_DD_create_detalles_quiniela_table.php`
+
+| Campo | Tipo | Detalles |
+|-------|------|----------|
+| `id` | bigint PK | — |
+| `jugada_id` | FK → jugadas | cascade delete |
+| `numero` | string(4) | Ej: "0042", "9999" |
+| `posicion` | tinyint unsigned | 1–20 |
+| `jurisdiccion` | enum | nacion / provincia / santa_fe / cordoba |
+| `importe` | decimal(10,2) | Importe libre definido por el usuario |
+
+---
+
+### [NEW] `database/migrations/YYYY_MM_DD_create_detalles_quini6_table.php`
+
+| Campo | Tipo | Detalles |
+|-------|------|----------|
+| `id` | bigint PK | — |
+| `jugada_id` | FK → jugadas | cascade delete |
+| `numeros` | json | Array de 6 enteros únicos [00–45] |
+
+---
+
+### [NEW] `database/migrations/YYYY_MM_DD_create_detalles_lotoplus_table.php`
+
+| Campo | Tipo | Detalles |
+|-------|------|----------|
+| `id` | bigint PK | — |
+| `jugada_id` | FK → jugadas | cascade delete |
+| `numeros` | json | Array de 6 enteros únicos [0–45] |
+| `numero_plus` | tinyint unsigned | 0–9 (obligatorio) |
+
+---
+
+### [NEW] `database/migrations/YYYY_MM_DD_create_detalles_loto5_table.php`
+
+| Campo | Tipo | Detalles |
+|-------|------|----------|
+| `id` | bigint PK | — |
+| `jugada_id` | FK → jugadas | cascade delete |
+| `numeros` | json | Array de 5 enteros únicos [0–36] |
+
+---
+
+### [NEW] `database/migrations/YYYY_MM_DD_create_detalles_quiniela_poceada_table.php`
+
+| Campo | Tipo | Detalles |
+|-------|------|----------|
+| `id` | bigint PK | — |
+| `jugada_id` | FK → jugadas | cascade delete |
+| `numeros` | json | Array de 8 enteros únicos de 2 cifras [00–99] |
+
+---
+
+### [NEW] `database/migrations/YYYY_MM_DD_create_precios_historicos_table.php`
+
+| Campo | Tipo | Detalles |
+|-------|------|----------|
+| `id` | bigint PK | — |
+| `tipo_juego` | string | quini6 / lotoplus / loto5 / poceada |
+| `valor` | decimal(10,2) | Precio en pesos |
+| `fecha_inicio` | date | Desde cuándo aplica |
+| `fecha_fin` | date nullable | NULL = precio vigente actual |
+
+---
+
+### [NEW] `database/migrations/YYYY_MM_DD_create_audit_logs_table.php`
+
+| Campo | Tipo | Detalles |
+|-------|------|----------|
+| `id` | bigint PK | — |
+| `user_id` | FK nullable → users | NULL = acción del sistema |
+| `accion` | string | Ej: "jugada_creada", "estado_cambiado" |
+| `descripcion` | text | Detalle completo de la acción |
+| `ip` | string(45) | IPv4 o IPv6 |
+| `timestamps` | — | created_at / updated_at |
+
+---
+
+## Paso 3 — Modelos y Factories
+
+### [MODIFY] `app/Models/User.php`
+- Agregar `dni` y `rol` a `$fillable`.
+- Agregar cast `rol` como string.
+- Agregar método helper `isAdmin(): bool`.
+
+### [NEW] `app/Models/Jugada.php`
+```
+fillable: user_id, modalidad, monto_total, precio_unitario_snapshot, estado, idempotency_token
+relations: belongsTo(User), hasOne(DetalleQuiniela|DetalleQuini6|...)
+scopes: pendiente(), procesado(), errorEnvio()
+```
+
+### [NEW] `app/Models/DetalleQuiniela.php`
+```
+fillable: jugada_id, numero, posicion, jurisdiccion, importe
+casts: — (strings y decimales)
+relation: belongsTo(Jugada)
+```
+
+### [NEW] `app/Models/DetalleQuini6.php`
+```
+fillable: jugada_id, numeros
+casts: numeros → array
+```
+
+### [NEW] `app/Models/DetalleLotoPlus.php`
+```
+fillable: jugada_id, numeros, numero_plus
+casts: numeros → array
+```
+
+### [NEW] `app/Models/DetalleLoto5.php`
+```
+fillable: jugada_id, numeros
+casts: numeros → array
+```
+
+### [NEW] `app/Models/DetalleQuinielaPoceada.php`
+```
+fillable: jugada_id, numeros
+casts: numeros → array
+```
+
+### [NEW] `app/Models/PrecioHistorico.php`
+```
+fillable: tipo_juego, valor, fecha_inicio, fecha_fin
+scope vigente(): where fecha_fin IS NULL
+```
+
+### [NEW] `app/Models/AuditLog.php`
+```
+fillable: user_id, accion, descripcion, ip
+relation: belongsTo(User)->nullable()
+```
+
+### [MODIFY] `database/factories/UserFactory.php`
+```php
+// Estados adicionales:
+public function admin(): static   // rol = admin
+public function cliente(): static // rol = cliente, con dni faker
+```
+
+### [NEW] `database/factories/JugadaFactory.php`
+```
+Estados: pendiente(), procesado(), errorEnvio()
+Asociado a User factory
+```
+
+---
+
+## Paso 4 — Seeders
+
+### [MODIFY] `database/seeders/DatabaseSeeder.php`
+```php
+$this->call([
+    AdminSeeder::class,
+    ClientesSeeder::class,
+    PreciosSeeder::class,
+]);
+```
+
+### [NEW] `database/seeders/AdminSeeder.php`
+Crea el administrador de prueba:
+```
+nombre:  Administrador del Sistema
+email:   admin@agencia5801.local
+dni:     00000001
+password: Admin1234!
+rol:     admin
+```
+
+### [NEW] `database/seeders/ClientesSeeder.php`
+Crea 5 clientes simulados con `UserFactory::new()->cliente()->count(5)->create()`.
+
+### [NEW] `database/seeders/PreciosSeeder.php`
+Inserta precios iniciales con `fecha_inicio = hoy`, `fecha_fin = null`:
+
+| tipo_juego | valor |
+|------------|-------|
+| quini6 | 1200.00 |
+| lotoplus | 1500.00 |
+| loto5 | 800.00 |
+| poceada | 1000.00 |
+
+---
+
+## Paso 5 — Middleware
+
+### [NEW] `app/Http/Middleware/AdminMiddleware.php`
+Lógica:
+```
+Si no está autenticado → redirect('/login')
+Si está autenticado pero rol != 'admin' → abort(403) o redirect('/jugadas')
+Si es admin → continuar
+```
+
+### [MODIFY] `bootstrap/app.php`
+Registrar alias:
+```php
+->withMiddleware(function (Middleware $middleware) {
+    $middleware->alias([
+        'auth.admin' => AdminMiddleware::class,
+    ]);
+})
+```
+
+---
+
+## Paso 6 — Controladores y Form Requests
+
+### [NEW] `app/Http/Controllers/HomeController.php`
+- `index()`: retorna vista `home` con lista de modalidades disponibles.
+
+### [NEW] `app/Http/Controllers/Auth/RegisterController.php`
+- `create()`: muestra formulario de registro.
+- `store(RegisterRequest $request)`: valida, crea usuario con `rol = cliente`, loguea, redirige a `/jugadas`.
+
+### [NEW] `app/Http/Controllers/Auth/LoginController.php`
+- `create()`: muestra formulario de login.
+- `store(LoginRequest $request)`: autentica con throttle (5 intentos/min). Redirige a `/admin` o `/jugadas` según `rol`.
+
+### [NEW] `app/Http/Controllers/Auth/LogoutController.php`
+- `destroy()`: invalida sesión, regenera token CSRF, redirige a `/`.
+
+### [NEW] `app/Http/Requests/Auth/RegisterRequest.php`
+Reglas de validación:
+```
+name     → required | string | min:3 | max:100
+dni      → required | string | min:7 | max:20 | unique:users,dni
+email    → required | email | max:150 | unique:users,email
+password → required | string | min:8 | confirmed
+```
+
+### [NEW] `app/Http/Requests/Auth/LoginRequest.php`
+Reglas:
+```
+email    → required | email
+password → required | string
+```
+Lógica: autentica con `Auth::attempt()`, aplica throttle.
+
+---
+
+## Paso 7 — Vistas Blade
+
+### [NEW] `resources/views/layouts/app.blade.php`
+Layout para clientes:
+- `<head>`: meta SEO, Outfit + Inter (Google Fonts), Vite CSS/JS.
+- **Header**: logo "Agencia N°5801" con ícono de naipes, nav (Inicio | Mis Jugadas), menú de usuario (nombre + cerrar sesión).
+- `@yield('content')`.
+- **Footer**: nombre de agencia, disclaimer *"Plataforma de simulación con fines académicos exclusivamente"*, año.
+
+### [NEW] `resources/views/layouts/admin.blade.php`
+Layout para backoffice:
+- **Sidebar fijo**: logo admin, links (Panel | Jugadas | Precios | Audit Log | Limpiar BD).
+- **Header top**: nombre del admin + logout.
+- `@yield('content')`.
+
+### [NEW] `resources/views/home.blade.php` — `@extends('layouts.app')`
+Secciones:
+1. **Hero**: título "Agencia N°5801", subtítulo, botones "Ingresar" y "Registrarse".
+2. **Cards de juegos**: una card por modalidad (Quiniela Tradicional, Quini 6, Loto Plus, Loto 5, Poceada) con ícono, nombre y descripción breve.
+3. **Sección de cómo funciona**: 3 pasos ilustrativos (Registrate → Elegí tu jugada → Descargá tu comprobante).
+
+### [NEW] `resources/views/auth/register.blade.php` — `@extends('layouts.app')`
+- Card centrada con: Nombre completo, DNI, Email, Contraseña, Confirmar contraseña.
+- Errores de validación por campo.
+- Link "¿Ya tenés cuenta? Iniciá sesión".
+
+### [NEW] `resources/views/auth/login.blade.php` — `@extends('layouts.app')`
+- Card centrada con: Email, Contraseña.
+- Errores de validación.
+- Link "¿No tenés cuenta? Registrate".
+
+### [NEW] `resources/views/jugadas/index.blade.php` — `@extends('layouts.app')`
+**Placeholder** para Fase 3:
+- Mensaje de bienvenida con nombre del usuario.
+- Banner "Próximamente: tus jugadas aparecerán aquí".
+- Botón desactivado "Nueva Jugada" (visual preview).
+
+### [NEW] `resources/views/admin/dashboard.blade.php` — `@extends('layouts.admin')`
+**Placeholder** para Fase 6:
+- Saludo "Bienvenido, Administrador".
+- Tarjetas de métricas vacías (Jugadas hoy, Pendientes, Procesadas).
+- Banner "El backoffice completo estará disponible en la próxima fase".
+
+---
+
+## Paso 8 — Rutas
+
+### [MODIFY] `routes/web.php`
+
+```php
+<?php
+
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\LogoutController;
+use Illuminate\Support\Facades\Route;
+
+// Pública
+Route::get('/', [HomeController::class, 'index'])->name('home');
+
+// Autenticación — solo para invitados
+Route::middleware('guest')->group(function () {
+    Route::get('/register', [RegisterController::class, 'create'])->name('register');
+    Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
+    Route::get('/login', [LoginController::class, 'create'])->name('login');
+    Route::post('/login', [LoginController::class, 'store'])->name('login.store');
+});
+
+// Logout
+Route::post('/logout', [LogoutController::class, 'destroy'])
+    ->name('logout')
+    ->middleware('auth');
+
+// Panel cliente
+Route::middleware('auth')->group(function () {
+    Route::get('/jugadas', fn() => view('jugadas.index'))->name('jugadas.index');
+});
+
+// Panel admin
+Route::middleware(['auth', 'auth.admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/', fn() => view('admin.dashboard'))->name('dashboard');
+});
+```
+
+---
+
+## Paso 9 — Frontend y Assets
+
+### [MODIFY] `resources/css/app.css`
+Design system completo:
+
+**Paleta de colores:**
+| Token | Valor | Uso |
+|-------|-------|-----|
+| `--color-bg` | `#0d1117` | Fondo principal |
+| `--color-surface` | `#161b22` | Cards y paneles |
+| `--color-border` | `#30363d` | Bordes sutiles |
+| `--color-primary` | `#00c896` | Verde esmeralda — CTAs y accents |
+| `--color-gold` | `#f5c518` | Dorado — juegos y badges |
+| `--color-text` | `#e6edf3` | Texto principal |
+| `--color-muted` | `#8b949e` | Texto secundario |
+| `--color-danger` | `#f85149` | Errores y alertas |
+| `--color-warning` | `#d29922` | Estado pendiente |
+| `--color-success` | `#3fb950` | Estado procesado |
+
+**Tipografía:** Google Fonts — `Outfit` (títulos) + `Inter` (cuerpo).
+
+**Componentes CSS a definir:**
+- `.btn`, `.btn-primary`, `.btn-outline`, `.btn-danger`
+- `.card`, `.card-hover`
+- `.form-group`, `.form-input`, `.form-label`, `.form-error`
+- `.badge`, `.badge-pendiente`, `.badge-procesado`, `.badge-error`
+- `.nav`, `.nav-link`
+- `.hero`, `.hero-title`, `.hero-subtitle`
+- `.game-card`, `.game-card:hover`
+- `.sidebar`, `.sidebar-link`
+- `.alert`, `.alert-error`, `.alert-success`
+
+**Animaciones:**
+- Hover suave en cards (`transform: translateY(-4px)`, sombra).
+- Fade-in en formularios al cargar.
+- Transición de color en botones (200ms ease).
+
+### [MODIFY] `vite.config.js`
+Verificar que incluye `resources/css/app.css` y `resources/js/app.js`.
+
+### [NEW] `public/images/logo.png` *(generado)*
+Logo para "Agencia N°5801" — diseño de naipes/lotería con la tipografía de la agencia.
+
+---
+
+## Paso 10 — Tests con Pest (Fases 1 y 2)
+
+### [NEW] `tests/Feature/Auth/RegistroTest.php`
+
+| Test | Qué verifica |
+|------|-------------|
+| `puede_ver_formulario_de_registro` | GET /register → 200 |
+| `puede_registrarse_con_datos_validos` | POST /register → usuario creado en BD, sesión iniciada, redirect /jugadas |
+| `no_puede_registrarse_con_dni_duplicado` | Segundo registro con mismo DNI → error validación |
+| `no_puede_registrarse_con_email_duplicado` | Segundo registro con mismo email → error validación |
+| `no_puede_registrarse_con_password_corta` | Contraseña < 8 chars → error validación |
+| `rol_por_defecto_es_cliente` | Usuario registrado tiene `rol = cliente` |
+
+### [NEW] `tests/Feature/Auth/LoginTest.php`
+
+| Test | Qué verifica |
+|------|-------------|
+| `puede_ver_formulario_de_login` | GET /login → 200 |
+| `cliente_puede_iniciar_sesion` | Login válido → redirect /jugadas |
+| `admin_puede_iniciar_sesion_y_va_a_admin` | Login admin → redirect /admin |
+| `login_con_credenciales_invalidas_falla` | Email/pass incorrectos → error, sin sesión |
+| `puede_cerrar_sesion` | POST /logout → sesión destruida, redirect / |
+
+### [NEW] `tests/Feature/Admin/AccesoAdminTest.php`
+
+| Test | Qué verifica |
+|------|-------------|
+| `cliente_no_puede_acceder_a_admin` | GET /admin como cliente → 403 o redirect |
+| `admin_puede_acceder_a_admin` | GET /admin como admin → 200 |
+| `invitado_no_puede_acceder_a_admin` | GET /admin sin sesión → redirect /login |
+| `invitado_no_puede_acceder_a_jugadas` | GET /jugadas sin sesión → redirect /login |
+
+---
+
+## Comandos de Ejecución (en orden)
+
+```bash
+# 1. Crear la BD en Laragon (HeidiSQL o phpMyAdmin)
+#    CREATE DATABASE agencia_quiniela CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+# 2. Migrar y seedear
+php artisan migrate --seed
+
+# 3. Verificar estructura de BD
+php artisan db:show
+
+# 4. Compilar assets frontend
+npm run build
+
+# 5. Correr tests
+php artisan test --compact
+
+# 6. Levantar servidor
+php artisan serve
+```
+
+---
+
+## Resultado al Finalizar Fases 1 y 2
+
+| URL | Acceso | Qué verás |
+|-----|--------|-----------|
+| `/` | Público | Landing page con hero + cards de juegos + cómo funciona |
+| `/register` | Solo invitados | Formulario de registro (nombre, DNI, email, contraseña) |
+| `/login` | Solo invitados | Formulario de login |
+| `/jugadas` | Auth (cliente) | Panel con mensaje de bienvenida + placeholder |
+| `/admin` | Auth (admin) | Dashboard con métricas placeholder |
+
+**Cuentas de prueba disponibles vía seeders:**
+
+| Rol | Email | Contraseña |
+|-----|-------|------------|
+| Admin | `admin@agencia5801.local` | `Admin1234!` |
+| Cliente (×5) | `faker@...` | `password` |
+
+---
+
+## Fases Futuras — Referencia
+
+| Fase | Alcance |
+|------|---------|
+| **3** | Motor de jugadas (5 modalidades) + JS en tiempo real + FormRequests completos |
+| **4** | `barryvdh/laravel-dompdf` — generación de comprobante PDF con disclaimer |
+| **5** | `NuevaJugadaMail` — SMTP a admin (Mailtrap → Gmail al finalizar) |
+| **6** | Backoffice admin: grilla, filtros, cambio de estado, copia rápida, export PDF |
+| **7** | Seguridad: SessionTimeout middleware, AuditLog, backup `.bat` |
+| **8** | Polish frontend + logo + assets finales |
+| **9** | Tests Fase 3–6 (jugadas, PDF, SMTP, admin) |

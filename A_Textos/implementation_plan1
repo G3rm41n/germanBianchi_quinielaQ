@@ -1,0 +1,321 @@
+# Plan de Implementación — Plataforma Agencia Quiniela (Simulación)
+
+## Descripción General
+
+Plataforma web de simulación transaccional de apuestas de lotería, construida sobre **Laravel 13 (PHP 8.5)** con motor de vistas Blade + Vanilla JS. El stack ya está instalado en Laragon, con SQLite como BD por defecto (a migrar a MySQL) y sin paquetes de dominio aún instalados.
+
+---
+
+## Revisión Requerida por el Usuario
+
+> [!IMPORTANT]
+> **Base de datos**: El proyecto actual usa **SQLite**. El SRS especifica **MySQL** a través de Laragon. ¿Confirmás que tenemos que migrar a MySQL? (implica cambiar `DB_CONNECTION` en `.env` y crear la base de datos en Laragon).
+
+> [!IMPORTANT]
+> **Cloudflare Turnstile**: Requiere un dominio público o un dominio local válido configurado en Cloudflare. Para un entorno estrictamente `local-only`, ¿lo implementamos con claves de **testing** de Turnstile (siempre aprueba en localhost) o lo omitimos en esta fase?
+
+> [!IMPORTANT]
+> **SMTP**: El SRS menciona credenciales de Gmail con contraseña de aplicación. ¿Ya tenés esas credenciales listas para configurar, o preferís que usemos **Mailtrap / maillog** durante el desarrollo y dejemos las credenciales reales para la fase final?
+
+> [!WARNING]
+> **Nombre de la Agencia**: El SRS menciona un nombre ficticio. ¿Tenés un nombre definido para la agencia (logo, colores de marca)? Si no, propongo generarlos como assets.
+
+> [!WARNING]
+> **Sesión de 5 minutos**: El SRS define expiración por inactividad a 5 min. Esto puede ser muy agresivo durante el desarrollo. ¿Lo configuramos así desde el inicio o lo ajustamos al final?
+
+---
+
+## Preguntas Abiertas
+
+1. **Nombre y branding**: ¿Tiene nombre la agencia? ¿Hay paleta de colores o logo existente?
+2. **Autenticación**: ¿Usamos `php artisan make:auth` (Laravel Breeze/UI) o construimos el sistema de login/registro a mano (como indica el SRS con campos `dni` y `rol`)?
+3. **Jurisdicciones (Quiniela Tradicional)**: ¿Cuáles son las jurisdicciones disponibles para seleccionar? (ej: Nación, Provincia de Bs As, Santa Fe, Córdoba, etc.)
+4. **Precios iniciales (Seeders)**: El SRS da valores de ejemplo. ¿Los confirmamos como definitivos? — Quini 6: $1.200 | Loto Plus: $1.500 | Loto 5: $800 | Quiniela Poceada: $1.000
+5. **Script de backup**: ¿El script de `mysqldump` debe ser un archivo `.bat` para Windows o un `.sh` para entorno mixto?
+6. **Testing**: ¿Querés tests desde el primer módulo o los añadimos al final?
+
+---
+
+## Cambios Propuestos — Fases de Implementación
+
+Las fases están ordenadas de dependencias hacia arriba.
+
+---
+
+### Fase 1 — Fundaciones (Entorno, BD y Autenticación)
+
+#### [MODIFY] `.env` y `.env.example`
+- Cambiar `DB_CONNECTION` a `mysql` y configurar credenciales Laragon.
+- Cambiar `SESSION_LIFETIME` a `5`.
+- Agregar variables para Turnstile (`TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`).
+- Agregar variables SMTP de Gmail.
+- Agregar `APP_NAME="Agencia Quiniela"`.
+
+#### [MODIFY] `migrations/0001_01_01_000000_create_users_table.php`
+- Agregar campos `dni` (string, unique) y `rol` (enum: `cliente`, `admin`, default `cliente`) a la tabla `users`.
+
+#### [NEW] `database/migrations/..._create_jugadas_table.php`
+- Campos: `id`, `user_id` (FK), `modalidad` (enum), `monto_total`, `precio_unitario_snapshot`, `estado` (enum: `pendiente`, `procesado`, `error_envio`), `idempotency_token` (uuid, unique), `timestamps`.
+
+#### [NEW] `database/migrations/..._create_detalles_quiniela_table.php`
+- Campos: `id`, `jugada_id` (FK), `numero` (string 4), `posicion` (tinyint), `jurisdiccion` (string), `importe` (decimal).
+
+#### [NEW] `database/migrations/..._create_detalles_quini6_table.php`
+- Campos: `id`, `jugada_id` (FK), `numeros` (JSON — array de 6 enteros).
+
+#### [NEW] `database/migrations/..._create_detalles_lotoplus_table.php`
+- Campos: `id`, `jugada_id` (FK), `numeros` (JSON), `numero_plus` (tinyint).
+
+#### [NEW] `database/migrations/..._create_detalles_loto5_table.php`
+- Campos: `id`, `jugada_id` (FK), `numeros` (JSON — array de 5 enteros).
+
+#### [NEW] `database/migrations/..._create_detalles_quiniela_poceada_table.php`
+- Campos: `id`, `jugada_id` (FK), `numeros` (JSON — array de 8 enteros de 2 cifras).
+
+#### [NEW] `database/migrations/..._create_precios_historicos_table.php`
+- Campos: `id`, `tipo_juego` (string), `valor` (decimal), `fecha_inicio` (date), `fecha_fin` (date, nullable).
+
+#### [NEW] `database/migrations/..._create_audit_logs_table.php`
+- Campos: `id`, `user_id` (nullable FK), `accion` (string), `descripcion` (text), `ip` (string), `timestamps`.
+
+#### [NEW] `database/seeders/AdminSeeder.php`
+- Crea usuario `admin@agencia.local` con `rol = admin`.
+
+#### [NEW] `database/seeders/ClientesSeeder.php`
+- Crea 5 clientes simulados con factory.
+
+#### [NEW] `database/seeders/PreciosSeeder.php`
+- Inserta precios iniciales por modalidad.
+
+#### [NEW] `database/factories/UserFactory.php` (modificar el existente)
+- Agregar estados para `admin()` y `cliente()` con DNI faker.
+
+#### [NEW] `app/Http/Middleware/AdminMiddleware.php`
+- Verifica `auth` + `user->rol === 'admin'`. Redirige si no cumple.
+
+#### [MODIFY] `bootstrap/app.php`
+- Registrar alias `auth:admin` apuntando a `AdminMiddleware`.
+
+---
+
+### Fase 2 — Autenticación de Usuarios
+
+#### [NEW] `app/Http/Controllers/Auth/RegisterController.php`
+- Maneja registro con `nombre`, `dni`, `email`, `password`. Valida unicidad de DNI.
+
+#### [NEW] `app/Http/Controllers/Auth/LoginController.php`
+- Login estándar con throttle. Redirige según `rol`.
+
+#### [NEW] `app/Http/Controllers/Auth/LogoutController.php`
+
+#### [NEW] `app/Http/Requests/Auth/RegisterRequest.php`
+#### [NEW] `app/Http/Requests/Auth/LoginRequest.php`
+
+#### [NEW] `resources/views/auth/register.blade.php`
+- Formulario: Nombre completo, DNI, Email, Contraseña, Confirmar contraseña.
+
+#### [NEW] `resources/views/auth/login.blade.php`
+- Formulario de login con feedback de errores.
+
+#### [NEW] `resources/views/layouts/app.blade.php`
+- Layout principal (cliente): header con nav, logo, sesión, footer con disclaimer académico.
+
+#### [NEW] `resources/views/layouts/admin.blade.php`
+- Layout backoffice: sidebar con secciones, acceso rápido a acciones.
+
+---
+
+### Fase 3 — Panel del Cliente y Motor de Jugadas
+
+#### [NEW] `app/Http/Controllers/JugadaController.php`
+- Métodos: `create()` (formulario), `store()` (procesar), `index()` (historial), `downloadPdf(Jugada $jugada)`.
+- Aplica idempotencia mediante `idempotency_token`.
+
+#### [NEW] `app/Http/Requests/JugadaRequest.php`
+- Validación backend exhaustiva según modalidad seleccionada (condicional `required_if`).
+
+#### [NEW] `app/Models/Jugada.php`
+- Relaciones: `belongsTo(User)`, `hasOne(DetalleQuiniela | DetalleQuini6 | ...)`.
+
+#### [NEW] `app/Models/DetalleQuiniela.php`, `DetalleQuini6.php`, `DetalleLotoPlus.php`, `DetalleLoto5.php`, `DetalleQuinielaPoceada.php`
+
+#### [NEW] `app/Models/PrecioHistorico.php`
+- Scope `vigente()` para obtener precio activo (`fecha_fin IS NULL`).
+
+#### [NEW] `resources/views/jugadas/create.blade.php`
+- Formulario unificado con **tabs/selector de modalidad**.
+- Quiniela Tradicional: input número (0000–9999), selector posición (1–20), selector jurisdicción, input importe.
+- Quini 6: grilla interactiva de números 00–45 (selección de exactamente 6).
+- Loto Plus: grilla 0–45 (6 números) + input Número Plus (0–9).
+- Loto 5: grilla 0–36 (exactamente 5 números).
+- Quiniela Poceada: grilla 00–99 (exactamente 8 números de 2 cifras).
+- Sección de **resumen dinámico de costo** (JS en tiempo real).
+- Widget de Cloudflare Turnstile antes del submit.
+
+#### [NEW] `resources/js/jugadas.js` (Vanilla JS)
+- Lógica de validación interactiva por modalidad.
+- Cálculo de costo en tiempo real (fetch precio desde endpoint o data-attribute).
+- Control del botón submit (deshabilitar hasta selección válida).
+- Generación del `idempotency_token` (UUID v4 en cliente).
+
+#### [NEW] `resources/views/jugadas/index.blade.php`
+- Tabla de historial del cliente con columnas: Fecha, Modalidad, Monto, Estado (badge colorido).
+- Botón "Descargar PDF" por fila.
+
+---
+
+### Fase 4 — Generación de PDF
+
+#### Instalar `barryvdh/laravel-dompdf`
+```
+composer require barryvdh/laravel-dompdf
+```
+
+#### [NEW] `resources/views/pdf/comprobante.blade.php`
+- Encabezado: Logo + Nombre Agencia + datos de contacto simulados.
+- Cuerpo: Ticket ID (UUID), fecha/hora servidor, modalidad, números seleccionados, monto.
+- Footer: Marca de agua / texto "Exclusivamente una simulación con fines académicos".
+
+#### [MODIFY] `JugadaController@downloadPdf`
+- Verifica que la jugada pertenezca al usuario autenticado (policy/gate).
+- Genera PDF con DomPDF y retorna como descarga.
+
+---
+
+### Fase 5 — Notificaciones SMTP
+
+#### [NEW] `app/Mail/NuevaJugadaMail.php`
+- Mailable hacia el admin.
+- Vista: tabla resumen con datos del cliente y de la jugada.
+
+#### [NEW] `resources/views/mail/nueva_jugada.blade.php`
+
+#### [MODIFY] `JugadaController@store`
+- Después de persistir, despacha `NuevaJugadaMail` usando `Mail::to($adminEmail)->queue()`.
+- En caso de excepción SMTP: actualiza estado a `error_envio` y registra en `audit_logs`.
+
+---
+
+### Fase 6 — Backoffice del Administrador
+
+#### [NEW] `app/Http/Controllers/Admin/DashboardController.php`
+- Vista con grilla de jugadas (todas, con joins a usuarios).
+- Filtros: por estado (`pendiente`, `procesado`, `error_envio`), por fecha.
+- Paginación.
+
+#### [NEW] `app/Http/Controllers/Admin/JugadaAdminController.php`
+- `update()`: cambia estado de jugada (pendiente → procesado).
+- `reenviarNotificacion()`: reenvía mail SMTP para jugadas `error_envio`.
+- `limpiarBaseDatos()`: elimina jugadas (con confirmación, protegido con token).
+
+#### [NEW] `app/Http/Controllers/Admin/PrecioController.php`
+- `edit()` / `update()`: modifica el precio vigente (cierra `fecha_fin` del registro anterior, inserta nuevo).
+
+#### [NEW] `resources/views/admin/dashboard.blade.php`
+- Tabla de jugadas con:
+  - Badges de estado (verde: procesado, amarillo: pendiente, rojo: error_envio).
+  - Botón "Copiar datos" al portapapeles (JS).
+  - Botón "Cambiar estado".
+  - Botón "Reenviar notificación" (solo si `error_envio`).
+  - Botón "Exportar PDF" (llama a `downloadPdf` con permiso admin).
+- Filtros de búsqueda (estado + fecha).
+- Sección "Precios": tabla editable con valores actuales.
+- Sección "Audit Log": tabla de acciones del sistema.
+- Botón "Limpiar Base de Datos" (con modal de confirmación).
+
+#### [NEW] `app/Http/Requests/Admin/UpdatePrecioRequest.php`
+#### [NEW] `app/Http/Requests/Admin/UpdateEstadoRequest.php`
+
+---
+
+### Fase 7 — Seguridad y Requisitos No Funcionales
+
+#### [NEW] `app/Http/Middleware/SessionTimeout.php`
+- Verifica `last_activity` en sesión; si supera 5 min, invalida y redirige al login.
+
+#### [NEW] `app/Models/AuditLog.php`
+- Modelo para tabla `audit_logs`.
+
+#### [NEW] Política de autorización (`app/Policies/JugadaPolicy.php`)
+- Garantiza que solo el dueño descargue su propio PDF.
+
+#### [MODIFY] `config/session.php`
+- `lifetime` = 5.
+
+#### [NEW] Script `scripts/backup.bat`
+- Ejecuta `mysqldump` con timestamp en nombre de archivo hacia `/backups/`.
+
+---
+
+### Fase 8 — Frontend y Assets
+
+#### [NEW] `resources/css/app.css`
+- Design system completo: paleta de colores (verde apuesta, dorado quiniela), tipografía, componentes (badges, cards, botones, formularios, tablas).
+- Modo Desktop-first.
+- Animaciones y micro-interacciones (hover en cards, transiciones de estado).
+
+#### [NEW] `public/images/logo.png`
+- Logo generado para la agencia (asset visual).
+
+#### [MODIFY] `vite.config.js`
+- Asegurar que incluye los bundles JS de jugadas y app CSS.
+
+---
+
+### Fase 9 — Testing
+
+#### [NEW] `tests/Feature/Auth/RegistroTest.php`
+- Registro con campos válidos e inválidos (DNI duplicado, email duplicado).
+
+#### [NEW] `tests/Feature/Jugadas/CrearJugadaTest.php`
+- Flujo completo por modalidad: form → BD → email encolado.
+- Validaciones backend por modalidad.
+- Idempotencia (doble submit rechazado).
+
+#### [NEW] `tests/Feature/Admin/BackofficeTest.php`
+- Acceso denegado a cliente, acceso permitido a admin.
+- Cambio de estado de jugada.
+
+#### [NEW] `tests/Feature/Pdf/ComprobantePdfTest.php`
+- Generación de PDF exitosa y pertenencia al usuario.
+
+---
+
+## Plan de Rutas (resumen)
+
+| Método | URI | Controlador | Middleware |
+|--------|-----|-------------|------------|
+| GET | `/` | `HomeController` | — |
+| GET/POST | `/register` | `Auth\RegisterController` | `guest` |
+| GET/POST | `/login` | `Auth\LoginController` | `guest` |
+| POST | `/logout` | `Auth\LogoutController` | `auth` |
+| GET | `/jugadas` | `JugadaController@index` | `auth` |
+| GET | `/jugadas/crear` | `JugadaController@create` | `auth` |
+| POST | `/jugadas` | `JugadaController@store` | `auth` |
+| GET | `/jugadas/{id}/pdf` | `JugadaController@downloadPdf` | `auth` |
+| GET | `/admin` | `Admin\DashboardController` | `auth:admin` |
+| PATCH | `/admin/jugadas/{id}/estado` | `Admin\JugadaAdminController@update` | `auth:admin` |
+| POST | `/admin/jugadas/{id}/reenviar` | `Admin\JugadaAdminController@reenviarNotificacion` | `auth:admin` |
+| DELETE | `/admin/limpiar` | `Admin\JugadaAdminController@limpiarBaseDatos` | `auth:admin` |
+| GET/PUT | `/admin/precios/{id}` | `Admin\PrecioController` | `auth:admin` |
+
+---
+
+## Plan de Verificación
+
+### Tests Automatizados
+```bash
+php artisan test --compact
+```
+- `tests/Feature/Auth/RegistroTest.php`
+- `tests/Feature/Jugadas/CrearJugadaTest.php`
+- `tests/Feature/Admin/BackofficeTest.php`
+- `tests/Feature/Pdf/ComprobantePdfTest.php`
+
+### Verificación Manual
+1. Registro de cliente + login → crear jugada de cada modalidad → descargar PDF.
+2. Login admin → ver grilla, cambiar estado, filtrar, copiar datos, exportar PDF.
+3. Simular fallo SMTP (credenciales vacías) → verificar estado `error_envio` en rojo + botón reenvío.
+4. Probar idempotencia: doble submit rápido → solo una jugada creada.
+5. Verificar timeout de sesión a los 5 minutos.
+6. Verificar protección de `/admin` accediendo directamente como cliente.
