@@ -12,6 +12,8 @@ class DetalleQuini6 extends Model
 {
     use HasFactory;
 
+    protected $table = 'detalles_quini6';
+
     protected function casts(): array
     {
         return [

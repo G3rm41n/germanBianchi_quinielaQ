@@ -12,6 +12,8 @@ class DetalleQuinielaPoceada extends Model
 {
     use HasFactory;
 
+    protected $table = 'detalles_quiniela_poceada';
+
     protected function casts(): array
     {
         return [

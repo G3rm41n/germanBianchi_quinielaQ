@@ -852,3 +852,89 @@ a:hover {
     border-top: 1px solid var(--color-border);
     margin: 1.5rem 0;
 }
+
+/* =========================================================================
+   Fase 3 — Motor de Jugadas
+   ========================================================================= */
+
+.jugada-tabs {
+    display: flex;
+    background-color: var(--color-surface);
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+    margin-bottom: 2rem;
+    border: 1px solid var(--color-border);
+    border-bottom: none;
+}
+
+.jugada-tab {
+    flex: 1;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 1rem;
+    color: var(--color-text);
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.jugada-tab:hover {
+    background-color: var(--color-surface2);
+}
+
+.jugada-tab.active {
+    border-bottom-color: var(--color-gold);
+    color: var(--color-gold);
+    background-color: var(--color-surface2);
+}
+
+.numero-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+    gap: 0.5rem;
+}
+
+.numero-btn {
+    background-color: var(--color-surface2);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    border-radius: 6px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.2s ease;
+}
+
+.numero-btn:hover:not(:disabled) {
+    border-color: var(--color-primary);
+}
+
+.numero-btn.selected {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-bg);
+}
+
+.numero-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.costo-resumen {
+    border-color: rgba(245, 197, 24, 0.3); /* Dorado tenue */
+    background: linear-gradient(180deg, var(--color-surface) 0%, rgba(22, 27, 34, 0.8) 100%);
+}
+
+.quiniela-grid {
+    align-items: start;
+}

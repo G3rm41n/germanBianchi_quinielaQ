@@ -22,9 +22,19 @@ Route::post('/logout', [LogoutController::class, 'destroy'])
     ->name('logout')
     ->middleware('auth');
 
-// Panel del cliente (placeholder — Fase 3)
+// Panel del cliente (Fase 3)
 Route::middleware('auth')->group(function () {
-    Route::get('/jugadas', fn () => view('jugadas.index'))->name('jugadas.index');
+    // Historial de jugadas del cliente
+    Route::get('/jugadas', [\App\Http\Controllers\JugadaController::class, 'index'])->name('jugadas.index');
+
+    // Formulario de nueva jugada
+    Route::get('/jugadas/crear', [\App\Http\Controllers\JugadaController::class, 'create'])->name('jugadas.create');
+
+    // Procesar nueva jugada
+    Route::post('/jugadas', [\App\Http\Controllers\JugadaController::class, 'store'])->name('jugadas.store');
+
+    // Descargar PDF (stub — Fase 4)
+    Route::get('/jugadas/{jugada}/pdf', [\App\Http\Controllers\JugadaController::class, 'downloadPdf'])->name('jugadas.pdf');
 });
 
 // Backoffice del administrador (placeholder — Fase 6)

@@ -12,6 +12,8 @@ class DetalleLotoPlus extends Model
 {
     use HasFactory;
 
+    protected $table = 'detalles_lotoplus';
+
     protected function casts(): array
     {
         return [
