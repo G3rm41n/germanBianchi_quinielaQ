@@ -84,7 +84,7 @@
                                     @endif
                                 </td>
                                 <td style="padding: 1.25rem 1.5rem;">
-                                    <a href="{{ route('jugadas.pdf', $jugada) }}" class="btn btn-ghost btn-sm" title="PDF disponible en Fase 4">
+                                    <a href="{{ route('jugadas.pdf', $jugada) }}" class="btn btn-ghost btn-sm" title="Descargar comprobante en PDF">
                                         📄 PDF
                                     </a>
                                 </td>

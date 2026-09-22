@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class JugadaController extends Controller
 {
@@ -125,10 +126,33 @@ class JugadaController extends Controller
      */
     public function downloadPdf(Jugada $jugada)
     {
-        if ($jugada->user_id !== Auth::id()) {
+        if ($jugada->user_id !== Auth::id() && Auth::user()->rol !== 'admin') {
             abort(403);
         }
 
-        abort(501, 'La generación de PDF estará disponible en la Fase 4.');
+        $jugada->load(['user', 'detalleQuiniela', 'detalleQuini6', 'detalleLotoPlus', 'detalleLoto5', 'detallePoceada']);
+
+        $usuario = $jugada->user;
+        $logoPath = public_path('images/logo.jpg');
+        $numerosFormateados = '';
+
+        if ($jugada->modalidad === 'quiniela') {
+            $detalle = $jugada->detalleQuiniela;
+            $numerosFormateados = "N° {$detalle->numero} — Posición {$detalle->posicion} — Jurisdicción: " . ucfirst($detalle->jurisdiccion);
+        } elseif ($jugada->modalidad === 'quini6') {
+            $numerosFormateados = implode(', ', $jugada->detalleQuini6->numeros);
+        } elseif ($jugada->modalidad === 'lotoplus') {
+            $detalle = $jugada->detalleLotoPlus;
+            $numerosFormateados = implode(', ', $detalle->numeros) . " — Plus: {$detalle->numero_plus}";
+        } elseif ($jugada->modalidad === 'loto5') {
+            $numerosFormateados = implode(', ', $jugada->detalleLoto5->numeros);
+        } elseif ($jugada->modalidad === 'poceada') {
+            $numerosFormateados = implode(', ', $jugada->detallePoceada->numeros);
+        }
+
+        $pdf = Pdf::loadView('pdf.comprobante', compact('jugada', 'usuario', 'logoPath', 'numerosFormateados'));
+        $pdf->setPaper('A4', 'portrait');
+
+        return $pdf->download("comprobante_{$jugada->id}_{$jugada->created_at->format('YmdHis')}.pdf");
     }
 }
