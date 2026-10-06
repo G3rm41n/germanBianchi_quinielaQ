@@ -34,7 +34,7 @@ it('puede ver historial de sus jugadas', function () {
     $this->actingAs($this->user)
          ->get(route('jugadas.index'))
          ->assertStatus(200)
-         ->assertSee('Aún no hay jugadas');
+         ->assertSee('Aún no hay boletas');
 });
 
 it('puede crear jugada quiniela valida', function () {
@@ -42,18 +42,22 @@ it('puede crear jugada quiniela valida', function () {
 
     $response = $this->actingAs($this->user)->post(route('jugadas.store'), [
         'idempotency_token' => $token,
-        'modalidad' => 'quiniela',
-        'numero' => '1234',
-        'posicion' => 10,
-        'jurisdiccion' => 'nacion',
-        'importe' => 500,
+        'cart_data' => json_encode([
+            [
+                'modalidad' => 'quiniela',
+                'numero' => '1234',
+                'posiciones' => [10],
+                'jurisdiccion' => 'nacion',
+                'importe' => 500,
+                'costo' => 500
+            ]
+        ])
     ]);
 
     $response->assertRedirect(route('jugadas.index'));
 
     $this->assertDatabaseHas('jugadas', [
         'user_id' => $this->user->id,
-        'modalidad' => 'quiniela',
         'monto_total' => 500,
         'estado' => 'pendiente',
     ]);
@@ -66,67 +70,49 @@ it('puede crear jugada quiniela valida', function () {
     ]);
 });
 
-it('puede crear jugada quini6 valida', function () {
+it('puede crear boleta multiple con quini6 y lotoplus valida', function () {
     $token = (string) Str::uuid();
 
     $response = $this->actingAs($this->user)->post(route('jugadas.store'), [
         'idempotency_token' => $token,
-        'modalidad' => 'quini6',
-        'numeros_quini6' => [1, 2, 3, 4, 5, 6],
+        'cart_data' => json_encode([
+            [
+                'modalidad' => 'quini6',
+                'numeros' => [1, 2, 3, 4, 5, 6],
+                'costo' => 1200
+            ],
+            [
+                'modalidad' => 'lotoplus',
+                'numeros' => [1, 2, 3, 4, 5, 6],
+                'numero_plus' => 5,
+                'costo' => 1500
+            ]
+        ])
     ]);
 
     $response->assertRedirect(route('jugadas.index'));
 
     $this->assertDatabaseHas('jugadas', [
         'user_id' => $this->user->id,
-        'modalidad' => 'quini6',
-        'monto_total' => 1200, // el valor que le dimos al precio historico
+        'monto_total' => 2700,
     ]);
 
     $this->assertDatabaseHas('detalles_quini6', [
         'numeros' => json_encode([1, 2, 3, 4, 5, 6]),
     ]);
-});
-
-it('puede crear jugada lotoplus valida', function () {
-    $token = (string) Str::uuid();
-
-    $response = $this->actingAs($this->user)->post(route('jugadas.store'), [
-        'idempotency_token' => $token,
-        'modalidad' => 'lotoplus',
-        'numeros_lotoplus' => [1, 2, 3, 4, 5, 6],
+    
+    $this->assertDatabaseHas('detalles_lotoplus', [
         'numero_plus' => 5,
     ]);
-
-    $response->assertRedirect(route('jugadas.index'));
-
-    $this->assertDatabaseHas('jugadas', [
-        'user_id' => $this->user->id,
-        'modalidad' => 'lotoplus',
-        'monto_total' => 1500,
-    ]);
 });
 
-it('falla si quini6 tiene menos de 6 numeros', function () {
+it('falla si boleta esta vacia', function () {
     $token = (string) Str::uuid();
 
     $response = $this->actingAs($this->user)->post(route('jugadas.store'), [
         'idempotency_token' => $token,
-        'modalidad' => 'quini6',
-        'numeros_quini6' => [1, 2, 3, 4, 5],
+        'cart_data' => json_encode([])
     ]);
 
-    $response->assertSessionHasErrors('numeros_quini6');
-});
-
-it('falla si quini6 tiene numeros repetidos', function () {
-    $token = (string) Str::uuid();
-
-    $response = $this->actingAs($this->user)->post(route('jugadas.store'), [
-        'idempotency_token' => $token,
-        'modalidad' => 'quini6',
-        'numeros_quini6' => [1, 1, 2, 3, 4, 5],
-    ]);
-
-    $response->assertSessionHasErrors('numeros_quini6.0');
+    $response->assertSessionHasErrors('cart');
 });

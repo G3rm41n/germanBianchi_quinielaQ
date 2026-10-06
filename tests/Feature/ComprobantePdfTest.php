@@ -13,15 +13,13 @@ beforeEach(function () {
 
     $this->jugada = Jugada::create([
         'user_id' => $this->user->id,
-        'modalidad' => 'quiniela',
         'monto_total' => 1000,
-        'precio_unitario_snapshot' => 1000,
         'estado' => 'pendiente',
         'idempotency_token' => 'test-uuid-123',
     ]);
     
     // El PDF requiere el detalle para renderizar
-    $this->jugada->detalleQuiniela()->create([
+    $this->jugada->detallesQuiniela()->create([
         'numero' => '1234',
         'posicion' => 10,
         'jurisdiccion' => 'nacion',

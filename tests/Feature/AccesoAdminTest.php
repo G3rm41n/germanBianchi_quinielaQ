@@ -26,7 +26,7 @@ describe('Control de acceso al backoffice', function () {
         $this->actingAs($admin)
             ->get(route('admin.dashboard'))
             ->assertStatus(200)
-            ->assertSee('Panel de Administración');
+            ->assertSee('Panel de Control');
     });
 
     it('un invitado no puede acceder al panel de jugadas y es redirigido al login', function () {
@@ -40,6 +40,6 @@ describe('Control de acceso al backoffice', function () {
         $this->actingAs($cliente)
             ->get(route('jugadas.index'))
             ->assertStatus(200)
-            ->assertSee('Mis Jugadas');
+            ->assertSee('Mis Boletas');
     });
 });

@@ -21,9 +21,7 @@ class JugadaFactory extends Factory
     {
         return [
             'user_id' => User::factory()->cliente(),
-            'modalidad' => fake()->randomElement(['quiniela', 'quini6', 'lotoplus', 'loto5', 'poceada']),
             'monto_total' => fake()->randomElement([800, 1000, 1200, 1500]),
-            'precio_unitario_snapshot' => fake()->randomElement([800, 1000, 1200, 1500]),
             'estado' => 'pendiente',
             'idempotency_token' => (string) Str::uuid(),
         ];

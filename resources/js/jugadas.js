@@ -1,14 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Elementos
+    // 1. Elementos Base
     const tabs = document.querySelectorAll('.jugada-tab');
     const sections = document.querySelectorAll('.jugada-form-section');
-    const inputModalidad = document.getElementById('input_modalidad');
-    const resumenMonto = document.getElementById('resumen-monto');
-    const resumenSeleccion = document.getElementById('resumen-seleccion');
-    const btnSubmit = document.getElementById('btn-submit');
     const formJugada = document.getElementById('form-jugada');
     
-    // 2. Precios
+    // Elementos del Resumen / Carrito
+    const resumenMonto = document.getElementById('resumen-monto');
+    const resumenSeleccion = document.getElementById('resumen-seleccion');
+    const btnAddCart = document.getElementById('btn-add-cart');
+    
+    const cartList = document.getElementById('cart-list');
+    const cartTotalAmount = document.getElementById('cart-total-amount');
+    const btnSubmit = document.getElementById('btn-submit-cart');
+    const hiddenCartInput = document.getElementById('cart_data');
+
+    // 2. Precios y Estado
     const preciosData = document.getElementById('precios-data');
     const PRECIOS = {
         quini6: parseFloat(preciosData.dataset.quini6),
@@ -17,24 +23,28 @@ document.addEventListener('DOMContentLoaded', () => {
         poceada: parseFloat(preciosData.dataset.poceada)
     };
 
-    // 3. Estado
     const state = {
         modalidad: 'quiniela',
         selecciones: {
+            quiniela: [], // Para guardar posiciones 1-20
             quini6: [],
             lotoplus: [],
             loto5: [],
             poceada: []
         },
         max: {
+            quiniela: 20,
             quini6: 6,
             lotoplus: 6,
             loto5: 5,
             poceada: 8
-        }
+        },
+        cart: []
     };
 
-    // 4. Tabs
+    const formatCurrency = (amount) => amount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    
+    // 4. Lógica de Tabs
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const target = tab.dataset.target;
@@ -49,15 +59,13 @@ document.addEventListener('DOMContentLoaded', () => {
             sections.forEach(s => s.style.display = 'none');
             document.getElementById(`panel-${target}`).style.display = 'block';
 
-            inputModalidad.value = target;
             state.modalidad = target;
-            
             updateResumen();
             checkValidity();
         });
     });
 
-    // 5. Grillas de números
+    // 5. Grillas Interactivas
     const renderGrid = (id, start, end, format) => {
         const container = document.getElementById(`grid-${id}`);
         if (!container) return;
@@ -74,12 +82,11 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.dataset.num = i;
             
             btn.addEventListener('click', () => toggleNumero(id, i, btn));
-            
             container.appendChild(btn);
         }
     };
 
-    const toggleNumero = (mod, num, btn) => {
+    let toggleNumero = (mod, num, btn) => {
         const max = state.max[mod];
         const selected = state.selecciones[mod];
         
@@ -94,6 +101,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
+        // Sort for numeric order just in case
+        selected.sort((a, b) => a - b);
+        
         updateGridUI(mod);
         updateResumen();
         checkValidity();
@@ -102,10 +112,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateGridUI = (mod) => {
         const max = state.max[mod];
         const count = state.selecciones[mod].length;
-        const container = document.getElementById(`grid-${mod}`);
+        const container = document.getElementById(mod === 'quiniela' ? 'grid-posiciones-quiniela' : `grid-${mod}`);
+        if(!container) return;
         const buttons = container.querySelectorAll('.numero-btn');
         
         buttons.forEach(btn => {
+            const num = parseInt(btn.dataset.num);
+            if (state.selecciones[mod].includes(num)) {
+                btn.classList.add('selected');
+            } else {
+                btn.classList.remove('selected');
+            }
+
             if (!btn.classList.contains('selected') && count >= max) {
                 btn.disabled = true;
             } else {
@@ -114,14 +132,61 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    const resetSelections = () => {
+        state.selecciones = { quiniela: [], quini6: [], lotoplus: [], loto5: [], poceada: [] };
+        
+        ['quiniela', 'quini6', 'lotoplus', 'loto5', 'poceada'].forEach(mod => {
+            updateGridUI(mod);
+        });
+
+        if (inputQuinielaNum) inputQuinielaNum.value = '';
+        if (inputQuinielaJur) inputQuinielaJur.value = '';
+        if (inputQuinielaImp) inputQuinielaImp.value = '';
+        if (inputLotoPlusPlus) inputLotoPlusPlus.value = '';
+        if (selectRangoPos) selectRangoPos.value = '';
+
+        updateResumen();
+        checkValidity();
+    };
+
+    // Render all grids
+    renderGrid('posiciones-quiniela', 1, 20, false);
     renderGrid('quini6', 0, 45, true);
     renderGrid('lotoplus', 0, 45, true);
     renderGrid('loto5', 0, 36, true);
     renderGrid('poceada', 0, 99, true);
 
-    // 6. Validación y Resumen
+    // Quiniela Range Logic
+    const selectRangoPos = document.getElementById('rango_posiciones');
+    const btnClearPos = document.getElementById('btn-clear-posiciones');
+
+    if (selectRangoPos) {
+        selectRangoPos.addEventListener('change', (e) => {
+            const limit = parseInt(e.target.value);
+            if (!limit) return;
+            
+            state.selecciones.quiniela = [];
+            for (let i = 1; i <= limit; i++) {
+                state.selecciones.quiniela.push(i);
+            }
+            updateGridUI('quiniela');
+            updateResumen();
+            checkValidity();
+        });
+    }
+
+    if (btnClearPos) {
+        btnClearPos.addEventListener('click', () => {
+            state.selecciones.quiniela = [];
+            if(selectRangoPos) selectRangoPos.value = '';
+            updateGridUI('quiniela');
+            updateResumen();
+            checkValidity();
+        });
+    }
+
+    // 6. Form Inputs & Validaciones
     const inputQuinielaNum = document.getElementById('numero');
-    const inputQuinielaPos = document.getElementById('posicion');
     const inputQuinielaJur = document.getElementById('jurisdiccion');
     const inputQuinielaImp = document.getElementById('importe');
     const inputLotoPlusPlus = document.getElementById('numero_plus');
@@ -132,8 +197,10 @@ document.addEventListener('DOMContentLoaded', () => {
         let status = '';
 
         if (mod === 'quiniela') {
-            costo = parseFloat(inputQuinielaImp.value) || 0;
-            status = 'Configurá tu jugada de Quiniela.';
+            const imp = parseFloat(inputQuinielaImp.value) || 0;
+            const countPos = state.selecciones.quiniela.length;
+            costo = countPos > 0 ? (imp * countPos) : 0;
+            status = costo > 0 ? `Quiniela: \$${imp} en ${countPos} posiciones` : 'Configurá tu jugada de Quiniela.';
         } else {
             const count = state.selecciones[mod].length;
             const max = state.max[mod];
@@ -149,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        resumenMonto.textContent = costo.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        resumenMonto.textContent = formatCurrency(costo);
         resumenSeleccion.textContent = status;
     };
 
@@ -159,14 +226,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (mod === 'quiniela') {
             const num = inputQuinielaNum.value;
-            const pos = inputQuinielaPos.value;
+            const countPos = state.selecciones.quiniela.length;
             const jur = inputQuinielaJur.value;
             const imp = parseFloat(inputQuinielaImp.value) || 0;
             
-            // Regex from backend
             const numRegex = /^\d{1,4}$/;
-            
-            if (numRegex.test(num) && pos && jur && imp > 0) {
+            if (numRegex.test(num) && countPos > 0 && jur && imp > 0) {
                 valid = true;
             }
         } else {
@@ -175,57 +240,127 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (count === max) {
                 if (mod === 'lotoplus') {
-                    if (inputLotoPlusPlus.value !== '' && parseInt(inputLotoPlusPlus.value) >= 0 && parseInt(inputLotoPlusPlus.value) <= 9) {
-                        valid = true;
-                    }
+                    const plus = parseInt(inputLotoPlusPlus.value);
+                    if (!isNaN(plus) && plus >= 0 && plus <= 9) valid = true;
                 } else {
                     valid = true;
                 }
             }
         }
 
-        btnSubmit.disabled = !valid;
+        btnAddCart.disabled = !valid;
     };
 
-    [inputQuinielaNum, inputQuinielaPos, inputQuinielaJur, inputQuinielaImp, inputLotoPlusPlus].forEach(el => {
+    [inputQuinielaNum, inputQuinielaJur, inputQuinielaImp, inputLotoPlusPlus].forEach(el => {
         if (el) {
-            el.addEventListener('input', () => {
-                updateResumen();
-                checkValidity();
-            });
-            el.addEventListener('change', () => {
-                updateResumen();
-                checkValidity();
-            });
+            el.addEventListener('input', () => { updateResumen(); checkValidity(); });
+            el.addEventListener('change', () => { updateResumen(); checkValidity(); });
         }
     });
 
-    // 7. Generación de arrays ocultos en submit
-    formJugada.addEventListener('submit', (e) => {
-        const mod = state.modalidad;
-        
-        // Remove existing dynamic inputs
-        formJugada.querySelectorAll('.dynamic-array-input').forEach(el => el.remove());
-
-        if (mod !== 'quiniela') {
-            const nums = state.selecciones[mod];
-            nums.forEach(num => {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = `numeros_${mod}[]`;
-                input.value = num;
-                input.className = 'dynamic-array-input';
-                formJugada.appendChild(input);
-            });
+    // Override toggleNumero to unselect range dropdown if manual selection happens for Quiniela
+    const originalToggle = toggleNumero;
+    toggleNumero = (mod, num, btn) => {
+        if (mod === 'posiciones-quiniela') {
+            mod = 'quiniela';
+            if(selectRangoPos) selectRangoPos.value = '';
         }
         
-        // Prevent double submit natively just in case
-        setTimeout(() => {
+        const max = state.max[mod];
+        const selected = state.selecciones[mod];
+        const index = selected.indexOf(num);
+        if (index > -1) {
+            selected.splice(index, 1);
+            btn.classList.remove('selected');
+        } else {
+            if (selected.length < max) {
+                selected.push(num);
+                btn.classList.add('selected');
+            }
+        }
+        selected.sort((a, b) => a - b);
+        updateGridUI(mod);
+        updateResumen();
+        checkValidity();
+    };
+
+    // 7. Lógica del Carrito
+    const renderCart = () => {
+        cartList.innerHTML = '';
+        let total = 0;
+
+        if (state.cart.length === 0) {
+            cartList.innerHTML = '<div style="color: var(--color-muted); font-size: 0.85rem; padding: 1rem 0; text-align: center;">La boleta está vacía.</div>';
+            cartTotalAmount.textContent = '0.00';
             btnSubmit.disabled = true;
-        }, 10);
+            return;
+        }
+
+        state.cart.forEach((item, index) => {
+            total += item.costo;
+            
+            const div = document.createElement('div');
+            div.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--color-border); font-size: 0.85rem;';
+            
+            let label = '';
+            if (item.modalidad === 'quiniela') {
+                label = `<strong>Quiniela (${item.jurisdiccion})</strong><br>Nº ${item.numero} | Posiciones: ${item.posiciones.join(', ')}`;
+            } else if (item.modalidad === 'quini6') {
+                label = `<strong>Quini 6</strong><br>${item.numeros.join(', ')}`;
+            } else if (item.modalidad === 'lotoplus') {
+                label = `<strong>Loto Plus</strong><br>${item.numeros.join(', ')} (Plus: ${item.numero_plus})`;
+            } else if (item.modalidad === 'loto5') {
+                label = `<strong>Loto 5</strong><br>${item.numeros.join(', ')}`;
+            } else if (item.modalidad === 'poceada') {
+                label = `<strong>Poceada</strong><br>${item.numeros.join(', ')}`;
+            }
+
+            div.innerHTML = `
+                <div style="flex: 1;">${label}</div>
+                <div style="font-weight: bold; color: var(--color-gold); margin: 0 1rem;">$${formatCurrency(item.costo)}</div>
+                <button type="button" class="btn btn-ghost btn-sm" style="color: #e53e3e; padding: 0.25rem 0.5rem;" data-index="${index}">✖</button>
+            `;
+            cartList.appendChild(div);
+        });
+
+        cartList.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = parseInt(e.currentTarget.dataset.index);
+                state.cart.splice(idx, 1);
+                renderCart();
+            });
+        });
+
+        cartTotalAmount.textContent = formatCurrency(total);
+        btnSubmit.disabled = false;
+        hiddenCartInput.value = JSON.stringify(state.cart);
+    };
+
+    btnAddCart.addEventListener('click', () => {
+        const mod = state.modalidad;
+        let item = { modalidad: mod };
+
+        if (mod === 'quiniela') {
+            item.numero = inputQuinielaNum.value;
+            item.posiciones = [...state.selecciones.quiniela];
+            item.jurisdiccion = inputQuinielaJur.value;
+            item.importe = parseFloat(inputQuinielaImp.value);
+            item.costo = item.importe * item.posiciones.length;
+        } else {
+            item.numeros = [...state.selecciones[mod]];
+            item.costo = PRECIOS[mod];
+            
+            if (mod === 'lotoplus') {
+                item.numero_plus = parseInt(inputLotoPlusPlus.value);
+            }
+        }
+
+        state.cart.push(item);
+        renderCart();
+        resetSelections();
     });
 
-    // INIT
     updateResumen();
     checkValidity();
+    renderCart();
 });

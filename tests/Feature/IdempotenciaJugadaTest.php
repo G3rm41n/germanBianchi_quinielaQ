@@ -19,15 +19,25 @@ it('doble submit con mismo token no crea duplicado', function () {
     // Primer request
     $this->actingAs($this->user)->post(route('jugadas.store'), [
         'idempotency_token' => $token,
-        'modalidad' => 'quini6',
-        'numeros_quini6' => [1, 2, 3, 4, 5, 6],
+        'cart_data' => json_encode([
+            [
+                'modalidad' => 'quini6',
+                'numeros' => [1, 2, 3, 4, 5, 6],
+                'costo' => 1200
+            ]
+        ]),
     ]);
 
     // Segundo request
     $this->actingAs($this->user)->post(route('jugadas.store'), [
         'idempotency_token' => $token,
-        'modalidad' => 'quini6',
-        'numeros_quini6' => [1, 2, 3, 4, 5, 6],
+        'cart_data' => json_encode([
+            [
+                'modalidad' => 'quini6',
+                'numeros' => [1, 2, 3, 4, 5, 6],
+                'costo' => 1200
+            ]
+        ]),
     ]);
 
     // Verificar que solo haya 1 jugada
@@ -41,15 +51,25 @@ it('token diferente crea jugada nueva', function () {
     // Primer request
     $this->actingAs($this->user)->post(route('jugadas.store'), [
         'idempotency_token' => $token1,
-        'modalidad' => 'quini6',
-        'numeros_quini6' => [1, 2, 3, 4, 5, 6],
+        'cart_data' => json_encode([
+            [
+                'modalidad' => 'quini6',
+                'numeros' => [1, 2, 3, 4, 5, 6],
+                'costo' => 1200
+            ]
+        ]),
     ]);
 
     // Segundo request
     $this->actingAs($this->user)->post(route('jugadas.store'), [
         'idempotency_token' => $token2,
-        'modalidad' => 'quini6',
-        'numeros_quini6' => [7, 8, 9, 10, 11, 12],
+        'cart_data' => json_encode([
+            [
+                'modalidad' => 'quini6',
+                'numeros' => [7, 8, 9, 10, 11, 12],
+                'costo' => 1200
+            ]
+        ]),
     ]);
 
     // Verificar que haya 2 jugadas

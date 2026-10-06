@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['user_id', 'modalidad', 'monto_total', 'precio_unitario_snapshot', 'estado', 'idempotency_token'])]
+#[Fillable(['user_id', 'monto_total', 'estado', 'idempotency_token'])]
 class Jugada extends Model
 {
     use HasFactory;
@@ -36,29 +36,29 @@ class Jugada extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function detalleQuiniela(): HasOne
+    public function detallesQuiniela(): HasMany
     {
-        return $this->hasOne(DetalleQuiniela::class);
+        return $this->hasMany(DetalleQuiniela::class);
     }
 
-    public function detalleQuini6(): HasOne
+    public function detallesQuini6(): HasMany
     {
-        return $this->hasOne(DetalleQuini6::class);
+        return $this->hasMany(DetalleQuini6::class);
     }
 
-    public function detalleLotoPlus(): HasOne
+    public function detallesLotoPlus(): HasMany
     {
-        return $this->hasOne(DetalleLotoPlus::class);
+        return $this->hasMany(DetalleLotoPlus::class);
     }
 
-    public function detalleLoto5(): HasOne
+    public function detallesLoto5(): HasMany
     {
-        return $this->hasOne(DetalleLoto5::class);
+        return $this->hasMany(DetalleLoto5::class);
     }
 
-    public function detallePoceada(): HasOne
+    public function detallesPoceada(): HasMany
     {
-        return $this->hasOne(DetalleQuinielaPoceada::class);
+        return $this->hasMany(DetalleQuinielaPoceada::class);
     }
 
     // =========================================================================

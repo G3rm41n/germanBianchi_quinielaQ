@@ -18,8 +18,8 @@ Sigue estos pasos para clonar el repositorio y configurar el proyecto en tu ento
 
 1. **Clonar el repositorio**
    ```bash
-   git clone <URL_DEL_REPOSITORIO>
-   cd germanBianchi_agenciaQ
+   git clone https://github.com/G3rm41n/germanBianchi_quinielaQ.git
+   cd germanBianchi_quinielaQ
    ```
 
 2. **Instalar dependencias de PHP (Backend)**
@@ -39,7 +39,7 @@ Sigue estos pasos para clonar el repositorio y configurar el proyecto en tu ento
    ```bash
    cp .env.example .env
    ```
-   *(En Windows puedes usar `copy .env.example .env`)*
+   *(En Windows PowerShell usa `copy .env.example .env`)*
 
 5. **Generar la clave de la aplicación**
    ```bash
@@ -52,18 +52,17 @@ Sigue estos pasos para clonar el repositorio y configurar el proyecto en tu ento
    DB_CONNECTION=mysql
    DB_HOST=127.0.0.1
    DB_PORT=3306
-   DB_DATABASE=agencia_quiniela # o el nombre que prefieras
+   DB_DATABASE=agencia_quiniela # u otro nombre que elijas
    DB_USERNAME=root
    DB_PASSWORD=
    ```
-   *Asegúrate de crear una base de datos vacía en tu gestor (por ejemplo, phpMyAdmin o HeidiSQL) antes de continuar.*
+   *Asegúrate de crear una base de datos vacía (ej. `agencia_quiniela`) en tu gestor (por ejemplo, phpMyAdmin o Laragon) antes de continuar.*
 
-7. **Ejecutar las migraciones**
-   Para crear las tablas necesarias en la base de datos, ejecuta:
+7. **Ejecutar las migraciones y Seeders (Muy Importante)**
+   Para crear las tablas necesarias en la base de datos y **poblarla con los precios base y usuarios de prueba**, ejecuta:
    ```bash
-   php artisan migrate
+   php artisan migrate --seed
    ```
-   *(Si el proyecto cuenta con datos iniciales, puedes usar `php artisan migrate --seed`)*
 
 8. **Levantar el servidor local**
    Si utilizas Laragon, solo debes iniciar los servicios y acceder a la URL local (por ejemplo `http://germanBianchi_agenciaQ.test` o `http://localhost/germanBianchi_agenciaQ/public/`).

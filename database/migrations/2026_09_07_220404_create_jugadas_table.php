@@ -14,9 +14,7 @@ return new class extends Migration
         Schema::create('jugadas', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->enum('modalidad', ['quiniela', 'quini6', 'lotoplus', 'loto5', 'poceada']);
             $table->decimal('monto_total', 10, 2);
-            $table->decimal('precio_unitario_snapshot', 10, 2)->nullable();
             $table->enum('estado', ['pendiente', 'procesado', 'error_envio'])->default('pendiente');
             $table->uuid('idempotency_token')->unique();
             $table->timestamps();

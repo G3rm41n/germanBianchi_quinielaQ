@@ -14,23 +14,17 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class JugadaController extends Controller
 {
-    /**
-     * Mostrar historial de jugadas del usuario.
-     */
     public function index(): View
     {
         $jugadas = Auth::user()
             ->jugadas()
-            ->with(['detalleQuiniela', 'detalleQuini6', 'detalleLotoPlus', 'detalleLoto5', 'detallePoceada'])
+            ->with(['detallesQuiniela', 'detallesQuini6', 'detallesLotoPlus', 'detallesLoto5', 'detallesPoceada'])
             ->orderByDesc('created_at')
             ->paginate(10);
 
         return view('jugadas.index', compact('jugadas'));
     }
 
-    /**
-     * Mostrar formulario de creación de jugada.
-     */
     public function create(): View
     {
         $precios = [
@@ -45,9 +39,6 @@ class JugadaController extends Controller
         return view('jugadas.create', compact('precios', 'token'));
     }
 
-    /**
-     * Procesar y guardar la nueva jugada.
-     */
     public function store(JugadaRequest $request): RedirectResponse
     {
         $user = Auth::user();
@@ -59,98 +50,87 @@ class JugadaController extends Controller
 
         if ($jugadaExistente) {
             return redirect()->route('jugadas.index')
-                ->with('success', '¡Tu jugada ya fue registrada con éxito!');
+                ->with('success', '¡Tu boleta ya fue registrada con éxito!');
         }
 
-        // 2. Determinar precio y guardar en transacción
-        DB::transaction(function () use ($request, $user) {
-            $modalidad = $request->modalidad;
-            
-            $montoTotal = 0;
-            $precioUnitario = 0;
+        $cart = $request->input('cart');
 
-            if ($modalidad === 'quiniela') {
-                $montoTotal = $request->importe;
-                $precioUnitario = $request->importe; // En quiniela, el precio unitario es el importe jugado
-            } else {
-                $precioActivo = PrecioHistorico::precioActual($modalidad);
-                $precioUnitario = $precioActivo ? $precioActivo->valor : 0;
-                $montoTotal = $precioUnitario;
-            }
+        // 2. Procesar y guardar en transacción
+        $jugada = null;
+        DB::transaction(function () use ($request, $user, $cart, &$jugada) {
+            $montoTotalBoleta = collect($cart)->sum('costo');
 
             $jugada = Jugada::create([
                 'user_id' => $user->id,
-                'modalidad' => $modalidad,
-                'monto_total' => $montoTotal,
-                'precio_unitario_snapshot' => $precioUnitario,
+                'monto_total' => $montoTotalBoleta,
                 'estado' => 'pendiente',
                 'idempotency_token' => $request->idempotency_token,
             ]);
 
-            // 3. Guardar detalle según modalidad
-            if ($modalidad === 'quiniela') {
-                $jugada->detalleQuiniela()->create([
-                    'numero' => $request->numero,
-                    'posicion' => $request->posicion,
-                    'jurisdiccion' => $request->jurisdiccion,
-                    'importe' => $request->importe,
-                ]);
-            } elseif ($modalidad === 'quini6') {
-                $jugada->detalleQuini6()->create([
-                    'numeros' => $request->numeros_quini6,
-                ]);
-            } elseif ($modalidad === 'lotoplus') {
-                $jugada->detalleLotoPlus()->create([
-                    'numeros' => $request->numeros_lotoplus,
-                    'numero_plus' => $request->numero_plus,
-                ]);
-            } elseif ($modalidad === 'loto5') {
-                $jugada->detalleLoto5()->create([
-                    'numeros' => $request->numeros_loto5,
-                ]);
-            } elseif ($modalidad === 'poceada') {
-                $jugada->detallePoceada()->create([
-                    'numeros' => $request->numeros_poceada,
-                ]);
+            foreach ($cart as $item) {
+                if ($item['modalidad'] === 'quiniela') {
+                    foreach ($item['posiciones'] as $pos) {
+                        $jugada->detallesQuiniela()->create([
+                            'numero' => $item['numero'],
+                            'posicion' => $pos,
+                            'jurisdiccion' => $item['jurisdiccion'],
+                            'importe' => $item['importe'],
+                        ]);
+                    }
+                } elseif ($item['modalidad'] === 'quini6') {
+                    $jugada->detallesQuini6()->create([
+                        'numeros' => $item['numeros'],
+                    ]);
+                } elseif ($item['modalidad'] === 'lotoplus') {
+                    $jugada->detallesLotoPlus()->create([
+                        'numeros' => $item['numeros'],
+                        'numero_plus' => $item['numero_plus'],
+                    ]);
+                } elseif ($item['modalidad'] === 'loto5') {
+                    $jugada->detallesLoto5()->create([
+                        'numeros' => $item['numeros'],
+                    ]);
+                } elseif ($item['modalidad'] === 'poceada') {
+                    $jugada->detallesPoceada()->create([
+                        'numeros' => $item['numeros'],
+                    ]);
+                }
             }
-
-            // [TODO Fase 5] Despachar NuevaJugadaMail a la cola...
         });
 
+        // 3. Fase 5: Notificación SMTP al administrador
+        try {
+            $admin = \App\Models\User::where('rol', 'admin')->first();
+            if ($admin && $admin->email) {
+                \Illuminate\Support\Facades\Mail::to($admin->email)->send(new \App\Mail\NuevaJugadaMail($jugada));
+            }
+        } catch (\Exception $e) {
+            $jugada->update(['estado' => 'error_envio']);
+            
+            \App\Models\AuditLog::create([
+                'user_id' => $user->id,
+                'accion' => 'smtp_failure',
+                'descripcion' => 'Fallo al enviar notificación SMTP de la jugada ' . $jugada->id . '. Error: ' . $e->getMessage(),
+                'ip' => request()->ip()
+            ]);
+        }
+
         return redirect()->route('jugadas.index')
-            ->with('success', '¡Tu jugada fue registrada exitosamente!');
+            ->with('success', '¡Tu boleta fue registrada exitosamente!');
     }
 
-    /**
-     * Descargar comprobante en PDF (Fase 4).
-     */
     public function downloadPdf(Jugada $jugada)
     {
         if ($jugada->user_id !== Auth::id() && Auth::user()->rol !== 'admin') {
             abort(403);
         }
 
-        $jugada->load(['user', 'detalleQuiniela', 'detalleQuini6', 'detalleLotoPlus', 'detalleLoto5', 'detallePoceada']);
+        $jugada->load(['user', 'detallesQuiniela', 'detallesQuini6', 'detallesLotoPlus', 'detallesLoto5', 'detallesPoceada']);
 
         $usuario = $jugada->user;
         $logoPath = public_path('images/logo.jpg');
-        $numerosFormateados = '';
 
-        if ($jugada->modalidad === 'quiniela') {
-            $detalle = $jugada->detalleQuiniela;
-            $numerosFormateados = "N° {$detalle->numero} — Posición {$detalle->posicion} — Jurisdicción: " . ucfirst($detalle->jurisdiccion);
-        } elseif ($jugada->modalidad === 'quini6') {
-            $numerosFormateados = implode(', ', $jugada->detalleQuini6->numeros);
-        } elseif ($jugada->modalidad === 'lotoplus') {
-            $detalle = $jugada->detalleLotoPlus;
-            $numerosFormateados = implode(', ', $detalle->numeros) . " — Plus: {$detalle->numero_plus}";
-        } elseif ($jugada->modalidad === 'loto5') {
-            $numerosFormateados = implode(', ', $jugada->detalleLoto5->numeros);
-        } elseif ($jugada->modalidad === 'poceada') {
-            $numerosFormateados = implode(', ', $jugada->detallePoceada->numeros);
-        }
-
-        $pdf = Pdf::loadView('pdf.comprobante', compact('jugada', 'usuario', 'logoPath', 'numerosFormateados'));
+        $pdf = Pdf::loadView('pdf.comprobante', compact('jugada', 'usuario', 'logoPath'));
         $pdf->setPaper('A4', 'portrait');
 
         return $pdf->download("comprobante_{$jugada->id}_{$jugada->created_at->format('YmdHis')}.pdf");

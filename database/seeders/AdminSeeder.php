@@ -14,7 +14,7 @@ class AdminSeeder extends Seeder
     public function run(): void
     {
         User::firstOrCreate(
-            ['email' => 'admin@agencia5801.local'],
+            ['email' => 'germanbianchi2011@hotmail.com'],
             [
                 'name' => 'Administrador del Sistema',
                 'dni' => '00000001',

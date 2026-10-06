@@ -49,7 +49,7 @@
             <form method="POST" action="{{ route('jugadas.store') }}" id="form-jugada">
                 @csrf
                 <input type="hidden" name="idempotency_token" id="idempotency_token" value="{{ $token }}">
-                <input type="hidden" name="modalidad" id="input_modalidad" value="quiniela">
+                <input type="hidden" name="cart_data" id="cart_data" value="[]">
 
                 {{-- Panel: Quiniela --}}
                 <div class="jugada-form-section" id="panel-quiniela" style="display: block;">
@@ -62,14 +62,22 @@
                                 <input type="text" id="numero" name="numero" class="form-input {{ $errors->has('numero') ? 'is-invalid' : '' }}" value="{{ old('numero') }}" placeholder="Ej: 324" maxlength="4">
                             </div>
                             
-                            <div class="form-group">
-                                <label for="posicion" class="form-label">Posición</label>
-                                <select id="posicion" name="posicion" class="form-input {{ $errors->has('posicion') ? 'is-invalid' : '' }}">
-                                    <option value="">Seleccioná...</option>
-                                    @for($i = 1; $i <= 20; $i++)
-                                        <option value="{{ $i }}" {{ old('posicion') == $i ? 'selected' : '' }}>{{ $i }}</option>
-                                    @endfor
-                                </select>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label class="form-label">Posiciones</label>
+                                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                                    <select id="rango_posiciones" class="form-input" style="flex: 1;">
+                                        <option value="">(Selección manual o elegí un rango rápido...)</option>
+                                        <option value="1">A la cabeza (1)</option>
+                                        <option value="5">A los 5 (Del 1 al 5)</option>
+                                        <option value="10">A los 10 (Del 1 al 10)</option>
+                                        <option value="20">A los 20 (Del 1 al 20)</option>
+                                    </select>
+                                    <button type="button" id="btn-clear-posiciones" class="btn btn-ghost btn-sm" style="border: 1px solid var(--color-border);">Limpiar</button>
+                                </div>
+                                <div class="numero-grid" id="grid-posiciones-quiniela" style="grid-template-columns: repeat(10, 1fr); gap: 5px;">
+                                    <!-- Botones generados por JS -->
+                                </div>
+                                <input type="hidden" name="posiciones" id="input_posiciones" value="[]">
                             </div>
 
                             <div class="form-group">
@@ -84,7 +92,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="importe" class="form-label">Importe ($)</label>
+                                <label for="importe" class="form-label">Importe por posición ($)</label>
                                 <input type="number" id="importe" name="importe" class="form-input {{ $errors->has('importe') ? 'is-invalid' : '' }}" value="{{ old('importe') }}" placeholder="Ej: 500" min="1">
                             </div>
                         </div>
@@ -145,10 +153,10 @@
             </form>
         </div>
 
-        {{-- Panel lateral: Resumen --}}
+        {{-- Panel lateral: Resumen y Carrito --}}
         <div>
             <div class="card costo-resumen" style="position: sticky; top: 100px;">
-                <h3 style="font-size: 0.85rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Costo de la jugada</h3>
+                <h3 style="font-size: 0.85rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Costo Apuesta Actual</h3>
                 <div style="font-family: var(--font-display); font-size: 2.5rem; font-weight: 800; color: var(--color-gold); line-height: 1; margin-bottom: 1rem;">
                     $<span id="resumen-monto">0.00</span>
                 </div>
@@ -157,8 +165,23 @@
                     Configurá tu jugada para continuar.
                 </div>
 
-                <button type="submit" form="form-jugada" class="btn btn-primary btn-block btn-lg" id="btn-submit" disabled>
-                    Confirmar Jugada
+                <button type="button" class="btn btn-ghost btn-block" style="border: 1px solid var(--color-primary); color: var(--color-primary); margin-bottom: 2rem;" id="btn-add-cart" disabled>
+                    + Agregar a la Boleta
+                </button>
+
+                <h3 style="font-size: 0.85rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; border-top: 1px solid var(--color-border); padding-top: 1rem;">Tu Boleta</h3>
+                
+                <div id="cart-list" style="margin-bottom: 1.5rem; max-height: 300px; overflow-y: auto;">
+                    <!-- Cart items injected via JS -->
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; font-weight: bold;">
+                    <span>TOTAL:</span>
+                    <span style="font-size: 1.25rem; color: var(--color-gold);">$<span id="cart-total-amount">0.00</span></span>
+                </div>
+
+                <button type="submit" form="form-jugada" class="btn btn-primary btn-block btn-lg" id="btn-submit-cart" disabled>
+                    Pagar Boleta Completa
                 </button>
             </div>
         </div>
