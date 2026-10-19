@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['user_id', 'monto_total', 'estado', 'idempotency_token'])]
+#[Fillable(['user_id', 'monto_total', 'estado', 'idempotency_token', 'resultado', 'monto_premio'])]
 class Jugada extends Model
 {
     use HasFactory;
@@ -23,6 +23,7 @@ class Jugada extends Model
     {
         return [
             'monto_total' => 'decimal:2',
+            'monto_premio' => 'decimal:2',
             'precio_unitario_snapshot' => 'decimal:2',
         ];
     }
@@ -78,5 +79,34 @@ class Jugada extends Model
     public function scopeErrorEnvio(Builder $query): Builder
     {
         return $query->where('estado', 'error_envio');
+    }
+
+    public function scopeGanadora(Builder $query): Builder
+    {
+        return $query->where('resultado', 'ganadora');
+    }
+
+    public function scopeNoGanadora(Builder $query): Builder
+    {
+        return $query->where('resultado', 'no_ganadora');
+    }
+
+    public function scopePendienteSorteo(Builder $query): Builder
+    {
+        return $query->where('resultado', 'pendiente_sorteo');
+    }
+
+    // =========================================================================
+    // Accessors & Helpers
+    // =========================================================================
+
+    public function getBalanceNetoAttribute(): float
+    {
+        return (float) ($this->monto_premio - $this->monto_total);
+    }
+
+    public function esGanadora(): bool
+    {
+        return $this->resultado === 'ganadora';
     }
 }

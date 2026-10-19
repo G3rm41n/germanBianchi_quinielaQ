@@ -23,8 +23,8 @@ it('doble submit con mismo token no crea duplicado', function () {
             [
                 'modalidad' => 'quini6',
                 'numeros' => [1, 2, 3, 4, 5, 6],
-                'costo' => 1200
-            ]
+                'costo' => 1200,
+            ],
         ]),
     ]);
 
@@ -35,8 +35,8 @@ it('doble submit con mismo token no crea duplicado', function () {
             [
                 'modalidad' => 'quini6',
                 'numeros' => [1, 2, 3, 4, 5, 6],
-                'costo' => 1200
-            ]
+                'costo' => 1200,
+            ],
         ]),
     ]);
 
@@ -55,8 +55,8 @@ it('token diferente crea jugada nueva', function () {
             [
                 'modalidad' => 'quini6',
                 'numeros' => [1, 2, 3, 4, 5, 6],
-                'costo' => 1200
-            ]
+                'costo' => 1200,
+            ],
         ]),
     ]);
 
@@ -67,8 +67,8 @@ it('token diferente crea jugada nueva', function () {
             [
                 'modalidad' => 'quini6',
                 'numeros' => [7, 8, 9, 10, 11, 12],
-                'costo' => 1200
-            ]
+                'costo' => 1200,
+            ],
         ]),
     ]);
 

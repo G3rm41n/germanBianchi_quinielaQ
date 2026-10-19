@@ -24,17 +24,17 @@ it('invitado no puede crear jugada', function () {
 
 it('puede ver formulario de nueva jugada', function () {
     $this->actingAs($this->user)
-         ->get(route('jugadas.create'))
-         ->assertStatus(200)
-         ->assertSee('Quiniela Tradicional')
-         ->assertSee('Quini 6');
+        ->get(route('jugadas.create'))
+        ->assertStatus(200)
+        ->assertSee('Quiniela Tradicional')
+        ->assertSee('Quini 6');
 });
 
 it('puede ver historial de sus jugadas', function () {
     $this->actingAs($this->user)
-         ->get(route('jugadas.index'))
-         ->assertStatus(200)
-         ->assertSee('Aún no hay boletas');
+        ->get(route('jugadas.index'))
+        ->assertStatus(200)
+        ->assertSee('Aún no hay boletas');
 });
 
 it('puede crear jugada quiniela valida', function () {
@@ -49,9 +49,9 @@ it('puede crear jugada quiniela valida', function () {
                 'posiciones' => [10],
                 'jurisdiccion' => 'nacion',
                 'importe' => 500,
-                'costo' => 500
-            ]
-        ])
+                'costo' => 500,
+            ],
+        ]),
     ]);
 
     $response->assertRedirect(route('jugadas.index'));
@@ -79,15 +79,15 @@ it('puede crear boleta multiple con quini6 y lotoplus valida', function () {
             [
                 'modalidad' => 'quini6',
                 'numeros' => [1, 2, 3, 4, 5, 6],
-                'costo' => 1200
+                'costo' => 1200,
             ],
             [
                 'modalidad' => 'lotoplus',
                 'numeros' => [1, 2, 3, 4, 5, 6],
                 'numero_plus' => 5,
-                'costo' => 1500
-            ]
-        ])
+                'costo' => 1500,
+            ],
+        ]),
     ]);
 
     $response->assertRedirect(route('jugadas.index'));
@@ -100,7 +100,7 @@ it('puede crear boleta multiple con quini6 y lotoplus valida', function () {
     $this->assertDatabaseHas('detalles_quini6', [
         'numeros' => json_encode([1, 2, 3, 4, 5, 6]),
     ]);
-    
+
     $this->assertDatabaseHas('detalles_lotoplus', [
         'numero_plus' => 5,
     ]);
@@ -111,7 +111,7 @@ it('falla si boleta esta vacia', function () {
 
     $response = $this->actingAs($this->user)->post(route('jugadas.store'), [
         'idempotency_token' => $token,
-        'cart_data' => json_encode([])
+        'cart_data' => json_encode([]),
     ]);
 
     $response->assertSessionHasErrors('cart');

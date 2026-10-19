@@ -1,9 +1,8 @@
 <?php
 
 use App\Mail\NuevaJugadaMail;
-use App\Models\Jugada;
-use App\Models\User;
 use App\Models\PrecioHistorico;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -15,7 +14,7 @@ beforeEach(function () {
     $this->admin = User::factory()->admin()->create([
         'email' => 'admin@agencia5801.local',
     ]);
-    
+
     PrecioHistorico::create(['tipo_juego' => 'quini6', 'valor' => 1200, 'fecha_inicio' => today()]);
 });
 
@@ -30,9 +29,9 @@ it('envio exitoso despacha el mail y mantiene estado pendiente', function () {
             [
                 'modalidad' => 'quini6',
                 'numeros' => [1, 2, 3, 4, 5, 6],
-                'costo' => 1200
-            ]
-        ])
+                'costo' => 1200,
+            ],
+        ]),
     ]);
 
     $response->assertRedirect(route('jugadas.index'));
@@ -47,7 +46,7 @@ it('envio exitoso despacha el mail y mantiene estado pendiente', function () {
 
 it('falla smtp cambia estado a error_envio y guarda audit_log', function () {
     // Forzamos un fallo en Mail mockeando el facade para arrojar excepcion
-    Mail::shouldReceive('to')->andThrow(new \Exception('Connection refused by SMTP'));
+    Mail::shouldReceive('to')->andThrow(new Exception('Connection refused by SMTP'));
 
     $token = (string) Str::uuid();
 
@@ -57,9 +56,9 @@ it('falla smtp cambia estado a error_envio y guarda audit_log', function () {
             [
                 'modalidad' => 'quini6',
                 'numeros' => [1, 2, 3, 4, 5, 6],
-                'costo' => 1200
-            ]
-        ])
+                'costo' => 1200,
+            ],
+        ]),
     ]);
 
     $response->assertRedirect(route('jugadas.index'));

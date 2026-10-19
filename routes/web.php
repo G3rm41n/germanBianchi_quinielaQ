@@ -1,9 +1,15 @@
 <?php
 
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\JugadaAdminController;
+use App\Http\Controllers\Admin\PrecioController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\JugadaController;
+use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
 
 // Página de inicio pública
@@ -25,28 +31,29 @@ Route::post('/logout', [LogoutController::class, 'destroy'])
 // Panel del cliente (Fase 3)
 Route::middleware('auth')->group(function () {
     // Historial de jugadas del cliente
-    Route::get('/jugadas', [\App\Http\Controllers\JugadaController::class, 'index'])->name('jugadas.index');
+    Route::get('/jugadas', [JugadaController::class, 'index'])->name('jugadas.index');
 
     // Formulario de nueva jugada
-    Route::get('/jugadas/crear', [\App\Http\Controllers\JugadaController::class, 'create'])->name('jugadas.create');
+    Route::get('/jugadas/crear', [JugadaController::class, 'create'])->name('jugadas.create');
 
     // Procesar nueva jugada
-    Route::post('/jugadas', [\App\Http\Controllers\JugadaController::class, 'store'])->name('jugadas.store');
+    Route::post('/jugadas', [JugadaController::class, 'store'])->name('jugadas.store');
 
     // Descargar PDF (stub — Fase 4)
-    Route::get('/jugadas/{jugada}/pdf', [\App\Http\Controllers\JugadaController::class, 'downloadPdf'])->name('jugadas.pdf');
+    Route::get('/jugadas/{jugada}/pdf', [JugadaController::class, 'downloadPdf'])->name('jugadas.pdf');
 });
 
-Route::prefix('admin')->middleware(['auth', \App\Http\Middleware\AdminMiddleware::class])->group(function () {
-    Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('admin.dashboard');
-    
-    Route::patch('/jugadas/{jugada}/estado', [\App\Http\Controllers\Admin\JugadaAdminController::class, 'update'])->name('admin.jugadas.estado');
-    Route::post('/jugadas/{jugada}/reenviar', [\App\Http\Controllers\Admin\JugadaAdminController::class, 'reenviarNotificacion'])->name('admin.jugadas.reenviar');
-    Route::delete('/limpiar', [\App\Http\Controllers\Admin\JugadaAdminController::class, 'limpiarBaseDatos'])->name('admin.limpiar');
-    
-    Route::put('/precios/{tipo_juego}', [\App\Http\Controllers\Admin\PrecioController::class, 'update'])->name('admin.precios.update');
-    
+Route::prefix('admin')->middleware(['auth', AdminMiddleware::class])->group(function () {
+    Route::get('/', [DashboardController::class, 'index'])->name('admin.dashboard');
+
+    Route::patch('/jugadas/{jugada}/estado', [JugadaAdminController::class, 'update'])->name('admin.jugadas.estado');
+    Route::patch('/jugadas/{jugada}/resultado', [JugadaAdminController::class, 'actualizarResultado'])->name('admin.jugadas.resultado');
+    Route::post('/jugadas/{jugada}/reenviar', [JugadaAdminController::class, 'reenviarNotificacion'])->name('admin.jugadas.reenviar');
+    Route::delete('/limpiar', [JugadaAdminController::class, 'limpiarBaseDatos'])->name('admin.limpiar');
+
+    Route::put('/precios/{tipo_juego}', [PrecioController::class, 'update'])->name('admin.precios.update');
+
     // Gestión de usuarios
-    Route::get('/usuarios', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('admin.users.index');
-    Route::get('/usuarios/{user}', [\App\Http\Controllers\Admin\UserController::class, 'show'])->name('admin.users.show');
+    Route::get('/usuarios', [UserController::class, 'index'])->name('admin.users.index');
+    Route::get('/usuarios/{user}', [UserController::class, 'show'])->name('admin.users.show');
 });

@@ -4,7 +4,6 @@ namespace App\Mail;
 
 use App\Models\Jugada;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -17,12 +16,12 @@ class NuevaJugadaMail extends Mailable
     public function __construct(public Jugada $jugada)
     {
         $this->jugada->loadMissing([
-            'user', 
-            'detallesQuiniela', 
-            'detallesQuini6', 
-            'detallesLotoPlus', 
-            'detallesLoto5', 
-            'detallesPoceada'
+            'user',
+            'detallesQuiniela',
+            'detallesQuini6',
+            'detallesLotoPlus',
+            'detallesLoto5',
+            'detallesPoceada',
         ]);
     }
 

@@ -1,19 +1,183 @@
 @extends('layouts.app')
 
-@section('title', 'Mis Boletas')
-@section('meta_description', 'Historial de tus boletas en Agencia N°5801.')
+@section('title', 'Mis Boletas y Balance')
+@section('meta_description', 'Historial y balance financiero de tus jugadas en Agencia N°5801.')
 
 @section('content')
 <div class="container" style="padding-top: 2.5rem; padding-bottom: 3rem;">
     
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem;">
         <div>
-            <h1 style="font-family: var(--font-display); font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem;">Mis Boletas</h1>
-            <p class="text-muted">Historial completo de tus compras en la plataforma.</p>
+            <h1 style="font-family: var(--font-display); font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem;">Mis Boletas y Balance</h1>
+            <p class="text-muted">Resumen financiero, desglose por categorías e historial de compras.</p>
         </div>
         <a href="{{ route('jugadas.create') }}" class="btn btn-primary btn-sm">
             🎯 Nueva Jugada
         </a>
+    </div>
+
+    {{-- 1. Tarjetas de Resumen Financiero --}}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
+        {{-- Total Invertido --}}
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid var(--color-primary); background-color: var(--color-surface);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); letter-spacing: 0.05em;">Total Invertido</span>
+                <span style="font-size: 1.25rem;">🪙</span>
+            </div>
+            <div style="font-size: 1.6rem; font-weight: 700; color: var(--color-text); font-family: var(--font-display);">
+                ${{ number_format($totales['total_invertido'], 2, ',', '.') }}
+            </div>
+            <span style="font-size: 0.75rem; color: var(--color-muted);">{{ $totales['total_jugadas'] }} boleta(s) registradas</span>
+        </div>
+
+        {{-- Total Ganancias --}}
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid var(--color-success); background-color: var(--color-surface);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); letter-spacing: 0.05em;">Total Ganancias</span>
+                <span style="font-size: 1.25rem;">🏆</span>
+            </div>
+            <div style="font-size: 1.6rem; font-weight: 700; color: var(--color-success); font-family: var(--font-display);">
+                ${{ number_format($totales['total_ganancias'], 2, ',', '.') }}
+            </div>
+            <span style="font-size: 0.75rem; color: var(--color-muted);">{{ $totales['jugadas_ganadoras'] }} boleta(s) premiada(s)</span>
+        </div>
+
+        {{-- Total Pérdidas --}}
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid var(--color-danger); background-color: var(--color-surface);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); letter-spacing: 0.05em;">Total Pérdidas</span>
+                <span style="font-size: 1.25rem;">📉</span>
+            </div>
+            <div style="font-size: 1.6rem; font-weight: 700; color: var(--color-danger); font-family: var(--font-display);">
+                ${{ number_format($totales['total_perdidas'], 2, ',', '.') }}
+            </div>
+            <span style="font-size: 0.75rem; color: var(--color-muted);">{{ $totales['jugadas_no_ganadoras'] }} sin aciertos</span>
+        </div>
+
+        {{-- Balance Neto --}}
+        @php
+            $balance = $totales['balance_neto'];
+            $colorBalance = $balance >= 0 ? 'var(--color-success)' : 'var(--color-danger)';
+            $signoBalance = $balance > 0 ? '+' : '';
+        @endphp
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid {{ $colorBalance }}; background-color: var(--color-surface);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); letter-spacing: 0.05em;">Balance Neto</span>
+                <span style="font-size: 1.25rem;">⚖️</span>
+            </div>
+            <div style="font-size: 1.6rem; font-weight: 700; color: {{ $colorBalance }}; font-family: var(--font-display);">
+                {{ $signoBalance }}${{ number_format($balance, 2, ',', '.') }}
+            </div>
+            <span style="font-size: 0.75rem; color: var(--color-muted);">
+                @if($balance > 0)
+                    🟢 En superávit
+                @elseif($balance < 0)
+                    🔴 En saldo negativo
+                @else
+                    ⚪ Sin diferencia
+                @endif
+            </span>
+        </div>
+    </div>
+
+    {{-- 2. Tabla por Categorías de Jugadas Hechas --}}
+    <div class="card" style="margin-bottom: 2.5rem; padding: 0; overflow: hidden;">
+        <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--color-border); background-color: rgba(255,255,255,0.02); display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-family: var(--font-display); font-size: 1.15rem; margin: 0; color: var(--color-text);">
+                📊 Desglose por Categorías de Juego
+            </h3>
+            <span style="font-size: 0.8rem; color: var(--color-muted);">5 modalidades disponibles</span>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                <thead>
+                    <tr style="border-bottom: 1px solid var(--color-border); background-color: rgba(0,0,0,0.2);">
+                        <th style="padding: 0.85rem 1.25rem; font-weight: 600; font-size: 0.8rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em;">Categoría</th>
+                        <th style="padding: 0.85rem 1.25rem; font-weight: 600; font-size: 0.8rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em; text-align: center;">Jugadas</th>
+                        <th style="padding: 0.85rem 1.25rem; font-weight: 600; font-size: 0.8rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Invertido ($)</th>
+                        <th style="padding: 0.85rem 1.25rem; font-weight: 600; font-size: 0.8rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Ganancias ($)</th>
+                        <th style="padding: 0.85rem 1.25rem; font-weight: 600; font-size: 0.8rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Pérdidas ($)</th>
+                        <th style="padding: 0.85rem 1.25rem; font-weight: 600; font-size: 0.8rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Balance Neto ($)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @php
+                        $sumaJugadas = 0;
+                        $sumaInvertido = 0;
+                        $sumaGanancias = 0;
+                        $sumaPerdidas = 0;
+                    @endphp
+                    @foreach($categorias as $cat)
+                        @php
+                            $sumaJugadas += $cat['cantidad_jugadas'];
+                            $sumaInvertido += $cat['total_invertido'];
+                            $sumaGanancias += $cat['total_ganancias'];
+                            $sumaPerdidas += $cat['total_perdidas'];
+                            $netoCat = $cat['balance_neto'];
+                            $colorCat = $netoCat > 0 ? 'var(--color-success)' : ($netoCat < 0 ? 'var(--color-danger)' : 'var(--color-muted)');
+                            $signoCat = $netoCat > 0 ? '+' : '';
+                        @endphp
+                        <tr style="border-bottom: 1px solid var(--color-border); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='var(--color-surface2)'" onmouseout="this.style.backgroundColor='transparent'">
+                            <td style="padding: 1rem 1.25rem; font-weight: 600;">
+                                <span style="margin-right: 0.5rem; font-size: 1.1rem;">{{ $cat['icono'] }}</span>
+                                {{ $cat['nombre'] }}
+                            </td>
+                            <td style="padding: 1rem 1.25rem; text-align: center; color: var(--color-muted);">
+                                {{ $cat['cantidad_jugadas'] }}
+                            </td>
+                            <td style="padding: 1rem 1.25rem; text-align: right; color: var(--color-text);">
+                                ${{ number_format($cat['total_invertido'], 2, ',', '.') }}
+                            </td>
+                            <td style="padding: 1rem 1.25rem; text-align: right; font-weight: 600; color: var(--color-success);">
+                                ${{ number_format($cat['total_ganancias'], 2, ',', '.') }}
+                            </td>
+                            <td style="padding: 1rem 1.25rem; text-align: right; color: var(--color-danger);">
+                                ${{ number_format($cat['total_perdidas'], 2, ',', '.') }}
+                            </td>
+                            <td style="padding: 1rem 1.25rem; text-align: right; font-weight: 700; color: {{ $colorCat }};">
+                                {{ $signoCat }}${{ number_format($netoCat, 2, ',', '.') }}
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+                <tfoot>
+                    @php
+                        $balanceGlobalTabla = $sumaGanancias - $sumaInvertido;
+                        $colorGlobalTabla = $balanceGlobalTabla > 0 ? 'var(--color-success)' : ($balanceGlobalTabla < 0 ? 'var(--color-danger)' : 'var(--color-gold)');
+                        $signoGlobal = $balanceGlobalTabla > 0 ? '+' : '';
+                    @endphp
+                    <tr style="background-color: rgba(255,255,255,0.04); font-weight: 700; border-top: 2px solid var(--color-border);">
+                        <td style="padding: 1rem 1.25rem; text-transform: uppercase; color: var(--color-gold);">
+                            ⭐ Total Consolidado
+                        </td>
+                        <td style="padding: 1rem 1.25rem; text-align: center; color: var(--color-gold);">
+                            {{ $sumaJugadas }}
+                        </td>
+                        <td style="padding: 1rem 1.25rem; text-align: right; color: var(--color-text);">
+                            ${{ number_format($sumaInvertido, 2, ',', '.') }}
+                        </td>
+                        <td style="padding: 1rem 1.25rem; text-align: right; color: var(--color-success);">
+                            ${{ number_format($sumaGanancias, 2, ',', '.') }}
+                        </td>
+                        <td style="padding: 1rem 1.25rem; text-align: right; color: var(--color-danger);">
+                            ${{ number_format($sumaPerdidas, 2, ',', '.') }}
+                        </td>
+                        <td style="padding: 1rem 1.25rem; text-align: right; color: {{ $colorGlobalTabla }}; font-size: 1rem;">
+                            {{ $signoGlobal }}${{ number_format($balanceGlobalTabla, 2, ',', '.') }}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    {{-- 3. Historial Completo de Boletas --}}
+    <div style="margin-bottom: 1rem;">
+        <h3 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem;">
+            📜 Historial de Boletas
+        </h3>
+        <p class="text-muted" style="font-size: 0.9rem;">Detalle individual y comprobantes de cada ticket emitido.</p>
     </div>
 
     @if($jugadas->isEmpty())
@@ -33,8 +197,9 @@
                         <tr style="border-bottom: 1px solid var(--color-border); background-color: rgba(0,0,0,0.2);">
                             <th style="padding: 1rem 1.5rem; font-weight: 600; font-size: 0.85rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em;">Boleta ID / Fecha</th>
                             <th style="padding: 1rem 1.5rem; font-weight: 600; font-size: 0.85rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em;">Apuestas</th>
-                            <th style="padding: 1rem 1.5rem; font-weight: 600; font-size: 0.85rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em;">Monto Total</th>
-                            <th style="padding: 1rem 1.5rem; font-weight: 600; font-size: 0.85rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em;">Estado</th>
+                            <th style="padding: 1rem 1.5rem; font-weight: 600; font-size: 0.85rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em;">Monto Invertido</th>
+                            <th style="padding: 1rem 1.5rem; font-weight: 600; font-size: 0.85rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em;">Resultado / Premio</th>
+                            <th style="padding: 1rem 1.5rem; font-weight: 600; font-size: 0.85rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em;">Estado Agencia</th>
                             <th style="padding: 1rem 1.5rem; font-weight: 600; font-size: 0.85rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em;">Acción</th>
                         </tr>
                     </thead>
@@ -66,6 +231,26 @@
                                 </td>
                                 <td style="padding: 1.25rem 1.5rem; font-weight: 600; color: var(--color-gold);">
                                     ${{ number_format($jugada->monto_total, 2, ',', '.') }}
+                                </td>
+                                <td style="padding: 1.25rem 1.5rem;">
+                                    @if($jugada->resultado === 'ganadora')
+                                        <div style="display: inline-flex; flex-direction: column; gap: 0.25rem;">
+                                            <span style="display: inline-block; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.3);">
+                                                🏆 GANADORA
+                                            </span>
+                                            <span style="font-size: 0.85rem; font-weight: 700; color: var(--color-success);">
+                                                Premio: +${{ number_format($jugada->monto_premio, 2, ',', '.') }}
+                                            </span>
+                                        </div>
+                                    @elseif($jugada->resultado === 'no_ganadora')
+                                        <span style="display: inline-block; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; background: rgba(248, 81, 73, 0.15); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.3);">
+                                            ❌ NO GANADORA
+                                        </span>
+                                    @else
+                                        <span style="display: inline-block; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; background: rgba(210, 153, 34, 0.15); color: #d29922; border: 1px solid rgba(210, 153, 34, 0.3);">
+                                            ⏳ EN SORTEO
+                                        </span>
+                                    @endif
                                 </td>
                                 <td style="padding: 1.25rem 1.5rem;">
                                     @if($jugada->estado === 'pendiente')

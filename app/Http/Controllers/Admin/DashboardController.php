@@ -6,16 +6,21 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Jugada;
 use App\Models\PrecioHistorico;
+use App\Services\BalanceService;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, BalanceService $balanceService)
     {
         $query = Jugada::with(['user', 'detallesQuiniela', 'detallesQuini6', 'detallesLotoPlus', 'detallesLoto5', 'detallesPoceada'])->latest();
 
         if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
+        }
+
+        if ($request->filled('resultado')) {
+            $query->where('resultado', $request->resultado);
         }
 
         $jugadas = $query->paginate(20)->withQueryString();
@@ -25,6 +30,9 @@ class DashboardController extends Controller
 
         $auditLogs = AuditLog::latest()->take(50)->get();
 
-        return view('admin.dashboard', compact('jugadas', 'preciosMap', 'auditLogs'));
+        $totales = $balanceService->obtenerTotales();
+        $categorias = $balanceService->obtenerDesgloseCategorias();
+
+        return view('admin.dashboard', compact('jugadas', 'preciosMap', 'auditLogs', 'totales', 'categorias'));
     }
 }

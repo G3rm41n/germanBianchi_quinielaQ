@@ -15,7 +15,7 @@ class JugadaRequest extends FormRequest
     {
         if ($this->has('cart_data')) {
             $this->merge([
-                'cart' => json_decode($this->cart_data, true)
+                'cart' => json_decode($this->cart_data, true),
             ]);
         }
     }
@@ -26,7 +26,7 @@ class JugadaRequest extends FormRequest
             'idempotency_token' => ['required', 'uuid'],
             'cart' => ['required', 'array', 'min:1'],
             'cart.*.modalidad' => ['required', 'in:quiniela,quini6,lotoplus,loto5,poceada'],
-            
+
             // Quiniela
             'cart.*.numero' => ['required_if:cart.*.modalidad,quiniela', 'nullable', 'string', 'regex:/^\d{1,4}$/'],
             'cart.*.posiciones' => ['required_if:cart.*.modalidad,quiniela', 'nullable', 'array', 'min:1'],

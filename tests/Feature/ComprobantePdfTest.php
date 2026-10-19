@@ -17,7 +17,7 @@ beforeEach(function () {
         'estado' => 'pendiente',
         'idempotency_token' => 'test-uuid-123',
     ]);
-    
+
     // El PDF requiere el detalle para renderizar
     $this->jugada->detallesQuiniela()->create([
         'numero' => '1234',
@@ -29,25 +29,25 @@ beforeEach(function () {
 
 it('invitado no puede descargar pdf', function () {
     $this->get("/jugadas/{$this->jugada->id}/pdf")
-         ->assertRedirect(route('login'));
+        ->assertRedirect(route('login'));
 });
 
 it('cliente puede descargar su propia jugada en pdf', function () {
     $this->actingAs($this->user)
-         ->get("/jugadas/{$this->jugada->id}/pdf")
-         ->assertStatus(200)
-         ->assertHeader('Content-Type', 'application/pdf');
+        ->get("/jugadas/{$this->jugada->id}/pdf")
+        ->assertStatus(200)
+        ->assertHeader('Content-Type', 'application/pdf');
 });
 
 it('cliente no puede descargar jugada de otro', function () {
     $this->actingAs($this->otherUser)
-         ->get("/jugadas/{$this->jugada->id}/pdf")
-         ->assertStatus(403);
+        ->get("/jugadas/{$this->jugada->id}/pdf")
+        ->assertStatus(403);
 });
 
 it('admin puede descargar cualquier jugada en pdf', function () {
     $this->actingAs($this->admin)
-         ->get("/jugadas/{$this->jugada->id}/pdf")
-         ->assertStatus(200)
-         ->assertHeader('Content-Type', 'application/pdf');
+        ->get("/jugadas/{$this->jugada->id}/pdf")
+        ->assertStatus(200)
+        ->assertHeader('Content-Type', 'application/pdf');
 });

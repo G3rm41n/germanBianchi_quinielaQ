@@ -4,7 +4,7 @@
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
     <div>
         <h1 style="font-family: var(--font-display); font-size: 2rem; font-weight: 700; color: var(--color-gold);">Panel de Control</h1>
-        <p style="color: var(--color-muted); font-size: 0.9rem;">Gestiona precios, revisa jugadas y monitorea errores del sistema.</p>
+        <p style="color: var(--color-muted); font-size: 0.9rem;">Balance financiero, gestión de precios, escrutinio de jugadas y monitoreo.</p>
     </div>
     
     <form action="{{ route('admin.limpiar') }}" method="POST" onsubmit="return confirm('ATENCIÓN: Esto borrará permanentemente TODAS las jugadas y logs. ¿Deseas continuar?');">
@@ -16,6 +16,154 @@
     </form>
 </div>
 
+{{-- 1. Tarjetas de Resumen Financiero de la Agencia --}}
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
+    {{-- Recaudación Total --}}
+    <div class="card" style="padding: 1.25rem; border-left: 4px solid var(--color-primary); background-color: var(--color-surface);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); letter-spacing: 0.05em;">Recaudación Bruta</span>
+            <span style="font-size: 1.25rem;">📥</span>
+        </div>
+        <div style="font-size: 1.6rem; font-weight: 700; color: var(--color-text); font-family: var(--font-display);">
+            ${{ number_format($totales['total_invertido'], 2, ',', '.') }}
+        </div>
+        <span style="font-size: 0.75rem; color: var(--color-muted);">{{ $totales['total_jugadas'] }} boletas de clientes</span>
+    </div>
+
+    {{-- Premios Abonados --}}
+    <div class="card" style="padding: 1.25rem; border-left: 4px solid var(--color-danger); background-color: var(--color-surface);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); letter-spacing: 0.05em;">Premios Liquidados</span>
+            <span style="font-size: 1.25rem;">📤</span>
+        </div>
+        <div style="font-size: 1.6rem; font-weight: 700; color: var(--color-danger); font-family: var(--font-display);">
+            ${{ number_format($totales['total_ganancias'], 2, ',', '.') }}
+        </div>
+        <span style="font-size: 0.75rem; color: var(--color-muted);">{{ $totales['jugadas_ganadoras'] }} boletas premiadas</span>
+    </div>
+
+    {{-- Ganancia Neta Agencia --}}
+    @php
+        $margenAgencia = $totales['total_invertido'] - $totales['total_ganancias'];
+        $colorMargen = $margenAgencia >= 0 ? 'var(--color-success)' : 'var(--color-danger)';
+        $signoMargen = $margenAgencia > 0 ? '+' : '';
+    @endphp
+    <div class="card" style="padding: 1.25rem; border-left: 4px solid {{ $colorMargen }}; background-color: var(--color-surface);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); letter-spacing: 0.05em;">Ganancia Neta Agencia</span>
+            <span style="font-size: 1.25rem;">💼</span>
+        </div>
+        <div style="font-size: 1.6rem; font-weight: 700; color: {{ $colorMargen }}; font-family: var(--font-display);">
+            {{ $signoMargen }}${{ number_format($margenAgencia, 2, ',', '.') }}
+        </div>
+        <span style="font-size: 0.75rem; color: var(--color-muted);">
+            @if($margenAgencia > 0)
+                🟢 Utilidad a favor
+            @elseif($margenAgencia < 0)
+                🔴 Saldo negativo
+            @else
+                ⚪ En equilibrio
+            @endif
+        </span>
+    </div>
+
+    {{-- En Espera de Escrutinio --}}
+    <div class="card" style="padding: 1.25rem; border-left: 4px solid var(--color-warning); background-color: var(--color-surface);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); letter-spacing: 0.05em;">Pendientes Sorteo</span>
+            <span style="font-size: 1.25rem;">⏳</span>
+        </div>
+        <div style="font-size: 1.6rem; font-weight: 700; color: var(--color-warning); font-family: var(--font-display);">
+            {{ $totales['jugadas_pendientes'] }}
+        </div>
+        <span style="font-size: 0.75rem; color: var(--color-muted);">Boletas en juego</span>
+    </div>
+</div>
+
+{{-- 2. Tabla Analítica de Categorías de Juego (Agencia) --}}
+<div class="card" style="margin-bottom: 2rem; padding: 0; overflow: hidden;">
+    <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--color-border); background-color: rgba(255,255,255,0.02); display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-family: var(--font-display); font-size: 1.15rem; margin: 0; color: var(--color-text);">
+            📊 Rentabilidad por Categoría de Juego
+        </h3>
+        <span style="font-size: 0.8rem; color: var(--color-muted);">Métricas consolidadas de la agencia</span>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--color-border); background-color: rgba(0,0,0,0.2);">
+                    <th style="padding: 0.85rem 1.25rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em;">Categoría</th>
+                    <th style="padding: 0.85rem 1.25rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em; text-align: center;">Jugadas</th>
+                    <th style="padding: 0.85rem 1.25rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Recaudación ($)</th>
+                    <th style="padding: 0.85rem 1.25rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Premios Pagados ($)</th>
+                    <th style="padding: 0.85rem 1.25rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Ganancia Agencia ($)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @php
+                    $sumAgenciaJugadas = 0;
+                    $sumAgenciaRecaudacion = 0;
+                    $sumAgenciaPremios = 0;
+                @endphp
+                @foreach($categorias as $cat)
+                    @php
+                        $sumAgenciaJugadas += $cat['cantidad_jugadas'];
+                        $sumAgenciaRecaudacion += $cat['total_invertido'];
+                        $sumAgenciaPremios += $cat['total_ganancias'];
+                        $margenCat = $cat['total_invertido'] - $cat['total_ganancias'];
+                        $colorMargenCat = $margenCat > 0 ? 'var(--color-success)' : ($margenCat < 0 ? 'var(--color-danger)' : 'var(--color-muted)');
+                        $signoMargenCat = $margenCat > 0 ? '+' : '';
+                    @endphp
+                    <tr style="border-bottom: 1px solid var(--color-border); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='var(--color-surface2)'" onmouseout="this.style.backgroundColor='transparent'">
+                        <td style="padding: 1rem 1.25rem; font-weight: 600; color: var(--color-text);">
+                            <span style="margin-right: 0.5rem; font-size: 1.1rem;">{{ $cat['icono'] }}</span>
+                            {{ $cat['nombre'] }}
+                        </td>
+                        <td style="padding: 1rem 1.25rem; text-align: center; color: var(--color-muted);">
+                            {{ $cat['cantidad_jugadas'] }}
+                        </td>
+                        <td style="padding: 1rem 1.25rem; text-align: right; color: var(--color-text);">
+                            ${{ number_format($cat['total_invertido'], 2, ',', '.') }}
+                        </td>
+                        <td style="padding: 1rem 1.25rem; text-align: right; color: var(--color-danger);">
+                            ${{ number_format($cat['total_ganancias'], 2, ',', '.') }}
+                        </td>
+                        <td style="padding: 1rem 1.25rem; text-align: right; font-weight: 700; color: {{ $colorMargenCat }};">
+                            {{ $signoMargenCat }}${{ number_format($margenCat, 2, ',', '.') }}
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+            <tfoot>
+                @php
+                    $margenTotalAgencia = $sumAgenciaRecaudacion - $sumAgenciaPremios;
+                    $colorMargenTotal = $margenTotalAgencia > 0 ? 'var(--color-success)' : ($margenTotalAgencia < 0 ? 'var(--color-danger)' : 'var(--color-gold)');
+                    $signoTotalAgencia = $margenTotalAgencia > 0 ? '+' : '';
+                @endphp
+                <tr style="background-color: rgba(255,255,255,0.04); font-weight: 700; border-top: 2px solid var(--color-border);">
+                    <td style="padding: 1rem 1.25rem; text-transform: uppercase; color: var(--color-gold);">
+                        ⭐ Total Agencia
+                    </td>
+                    <td style="padding: 1rem 1.25rem; text-align: center; color: var(--color-gold);">
+                        {{ $sumAgenciaJugadas }}
+                    </td>
+                    <td style="padding: 1rem 1.25rem; text-align: right; color: var(--color-text);">
+                        ${{ number_format($sumAgenciaRecaudacion, 2, ',', '.') }}
+                    </td>
+                    <td style="padding: 1rem 1.25rem; text-align: right; color: var(--color-danger);">
+                        ${{ number_format($sumAgenciaPremios, 2, ',', '.') }}
+                    </td>
+                    <td style="padding: 1rem 1.25rem; text-align: right; color: {{ $colorMargenTotal }}; font-size: 0.95rem;">
+                        {{ $signoTotalAgencia }}${{ number_format($margenTotalAgencia, 2, ',', '.') }}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+{{-- 3. Gestión de Precios --}}
 <div class="card" style="margin-bottom: 2rem;">
     <h3 style="font-family: var(--font-display); font-size: 1.25rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--color-border); padding-bottom: 0.75rem; color: var(--color-text);">Gestión de Precios (Por jugada)</h3>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
@@ -36,16 +184,24 @@
     </div>
 </div>
 
+{{-- 4. Historial de Jugadas y Escrutinio --}}
 <div class="card" style="margin-bottom: 2rem;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--color-border); padding-bottom: 0.75rem;">
-        <h3 style="font-family: var(--font-display); font-size: 1.25rem; color: var(--color-text); margin: 0;">Historial de Jugadas</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--color-border); padding-bottom: 0.75rem; flex-wrap: wrap; gap: 1rem;">
+        <h3 style="font-family: var(--font-display); font-size: 1.25rem; color: var(--color-text); margin: 0;">Historial de Jugadas y Escrutinio</h3>
         
-        <form method="GET" action="{{ route('admin.dashboard') }}" style="display: flex; gap: 0.5rem;">
-            <select name="estado" class="form-input" onchange="this.form.submit()" style="width: auto; padding: 0.4rem 2rem 0.4rem 1rem;">
-                <option value="">Todos los estados</option>
+        <form method="GET" action="{{ route('admin.dashboard') }}" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <select name="estado" class="form-input" onchange="this.form.submit()" style="width: auto; padding: 0.4rem 1.5rem 0.4rem 0.8rem; font-size: 0.8rem;">
+                <option value="">Todos los envíos</option>
                 <option value="pendiente" {{ request('estado') === 'pendiente' ? 'selected' : '' }}>Pendientes</option>
                 <option value="procesado" {{ request('estado') === 'procesado' ? 'selected' : '' }}>Procesados</option>
                 <option value="error_envio" {{ request('estado') === 'error_envio' ? 'selected' : '' }}>Error SMTP</option>
+            </select>
+
+            <select name="resultado" class="form-input" onchange="this.form.submit()" style="width: auto; padding: 0.4rem 1.5rem 0.4rem 0.8rem; font-size: 0.8rem;">
+                <option value="">Todos los resultados</option>
+                <option value="pendiente_sorteo" {{ request('resultado') === 'pendiente_sorteo' ? 'selected' : '' }}>⏳ En Sorteo</option>
+                <option value="ganadora" {{ request('resultado') === 'ganadora' ? 'selected' : '' }}>🏆 Ganadoras</option>
+                <option value="no_ganadora" {{ request('resultado') === 'no_ganadora' ? 'selected' : '' }}>❌ No Ganadoras</option>
             </select>
         </form>
     </div>
@@ -58,7 +214,8 @@
                     <th style="padding: 1rem; border-bottom: 1px solid var(--color-border); text-align: left; color: var(--color-muted);">Cliente</th>
                     <th style="padding: 1rem; border-bottom: 1px solid var(--color-border); text-align: left; color: var(--color-muted);">Apuestas</th>
                     <th style="padding: 1rem; border-bottom: 1px solid var(--color-border); text-align: right; color: var(--color-muted);">Monto</th>
-                    <th style="padding: 1rem; border-bottom: 1px solid var(--color-border); text-align: center; color: var(--color-muted);">Estado</th>
+                    <th style="padding: 1rem; border-bottom: 1px solid var(--color-border); text-align: center; color: var(--color-muted);">Resultado / Premio</th>
+                    <th style="padding: 1rem; border-bottom: 1px solid var(--color-border); text-align: center; color: var(--color-muted);">Estado Agencia</th>
                     <th style="padding: 1rem; border-bottom: 1px solid var(--color-border); text-align: right; color: var(--color-muted);">Acciones</th>
                 </tr>
             </thead>
@@ -96,6 +253,29 @@
                         ${{ number_format($jugada->monto_total, 2, ',', '.') }}
                     </td>
                     <td style="padding: 1rem; text-align: center;">
+                        {{-- Formulario de Escrutinio Rápido --}}
+                        <form action="{{ route('admin.jugadas.resultado', $jugada) }}" method="POST" style="display: flex; flex-direction: column; gap: 0.35rem; align-items: center;">
+                            @csrf
+                            @method('PATCH')
+                            <select name="resultado" class="form-input" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; width: auto;" onchange="const wrap = this.parentElement.querySelector('.premio-wrap'); if(this.value==='ganadora'){ wrap.style.display='flex'; } else { wrap.style.display='none'; this.form.submit(); }">
+                                <option value="pendiente_sorteo" {{ $jugada->resultado === 'pendiente_sorteo' ? 'selected' : '' }}>⏳ En Sorteo</option>
+                                <option value="ganadora" {{ $jugada->resultado === 'ganadora' ? 'selected' : '' }}>🏆 Ganadora</option>
+                                <option value="no_ganadora" {{ $jugada->resultado === 'no_ganadora' ? 'selected' : '' }}>❌ No Ganadora</option>
+                            </select>
+
+                            <div class="premio-wrap" style="display: {{ $jugada->resultado === 'ganadora' ? 'flex' : 'none' }}; gap: 0.25rem; align-items: center; margin-top: 0.25rem;">
+                                <input type="number" step="0.01" min="0" name="monto_premio" class="form-input" value="{{ $jugada->monto_premio ?: '' }}" placeholder="$ Premio" style="width: 85px; padding: 0.2rem 0.4rem; font-size: 0.75rem;">
+                                <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" title="Guardar Premio">💾</button>
+                            </div>
+
+                            @if($jugada->resultado === 'ganadora')
+                                <span style="font-size: 0.75rem; color: var(--color-success); font-weight: 700;">
+                                    Premio: ${{ number_format($jugada->monto_premio, 2, ',', '.') }}
+                                </span>
+                            @endif
+                        </form>
+                    </td>
+                    <td style="padding: 1rem; text-align: center;">
                         <span class="badge badge-{{ $jugada->estado }}">
                             {{ strtoupper($jugada->estado) }}
                         </span>
@@ -125,7 +305,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" style="text-align: center; padding: 3rem;">
+                    <td colspan="7" style="text-align: center; padding: 3rem;">
                         <span style="font-size: 2.5rem; opacity: 0.5;">📭</span><br>
                         <span style="color: var(--color-muted); display: block; margin-top: 1rem;">No hay jugadas registradas en el sistema.</span>
                     </td>
@@ -140,6 +320,7 @@
     </div>
 </div>
 
+{{-- 5. Logs de Auditoría --}}
 <div class="card">
     <h3 style="font-family: var(--font-display); font-size: 1.25rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--color-border); padding-bottom: 0.75rem; color: var(--color-text);">Logs de Auditoría (Últimos 50 eventos)</h3>
     <div style="max-height: 400px; overflow-y: auto; background-color: rgba(0,0,0,0.3); color: var(--color-text); padding: 1.25rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; border: 1px solid var(--color-border);">
@@ -149,7 +330,7 @@
                 <strong style="color: var(--color-primary); margin: 0 0.5rem;">{{ strtoupper($log->accion) }}</strong> 
                 @if($log->jugada_id) <span style="color: var(--color-gold);">[Jugada ID: {{ $log->jugada_id }}]</span> @endif
                 <br>
-                <span style="color: #a5b4fc;">{{ $log->detalles }}</span>
+                <span style="color: #a5b4fc;">{{ $log->descripcion ?? $log->detalles }}</span>
             </div>
         @empty
             <div style="color: var(--color-muted); text-align: center; padding: 2rem 0;">No hay registros de auditoría en el sistema.</div>

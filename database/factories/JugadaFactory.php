@@ -56,4 +56,20 @@ class JugadaFactory extends Factory
             'estado' => 'error_envio',
         ]);
     }
+
+    public function ganadora(float $premio = 5000): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'resultado' => 'ganadora',
+            'monto_premio' => $premio,
+        ]);
+    }
+
+    public function noGanadora(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'resultado' => 'no_ganadora',
+            'monto_premio' => 0,
+        ]);
+    }
 }

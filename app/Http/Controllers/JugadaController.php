@@ -3,26 +3,36 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\JugadaRequest;
+use App\Mail\NuevaJugadaMail;
+use App\Models\AuditLog;
 use App\Models\Jugada;
 use App\Models\PrecioHistorico;
+use App\Models\User;
+use App\Services\BalanceService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
-use Barryvdh\DomPDF\Facade\Pdf;
 
 class JugadaController extends Controller
 {
-    public function index(): View
+    public function index(BalanceService $balanceService): View
     {
+        $userId = (int) Auth::id();
+
         $jugadas = Auth::user()
             ->jugadas()
             ->with(['detallesQuiniela', 'detallesQuini6', 'detallesLotoPlus', 'detallesLoto5', 'detallesPoceada'])
             ->orderByDesc('created_at')
             ->paginate(10);
 
-        return view('jugadas.index', compact('jugadas'));
+        $totales = $balanceService->obtenerTotales($userId);
+        $categorias = $balanceService->obtenerDesgloseCategorias($userId);
+
+        return view('jugadas.index', compact('jugadas', 'totales', 'categorias'));
     }
 
     public function create(): View
@@ -100,18 +110,18 @@ class JugadaController extends Controller
 
         // 3. Fase 5: Notificación SMTP al administrador
         try {
-            $admin = \App\Models\User::where('rol', 'admin')->first();
+            $admin = User::where('rol', 'admin')->first();
             if ($admin && $admin->email) {
-                \Illuminate\Support\Facades\Mail::to($admin->email)->send(new \App\Mail\NuevaJugadaMail($jugada));
+                Mail::to($admin->email)->send(new NuevaJugadaMail($jugada));
             }
         } catch (\Exception $e) {
             $jugada->update(['estado' => 'error_envio']);
-            
-            \App\Models\AuditLog::create([
+
+            AuditLog::create([
                 'user_id' => $user->id,
                 'accion' => 'smtp_failure',
-                'descripcion' => 'Fallo al enviar notificación SMTP de la jugada ' . $jugada->id . '. Error: ' . $e->getMessage(),
-                'ip' => request()->ip()
+                'descripcion' => 'Fallo al enviar notificación SMTP de la jugada '.$jugada->id.'. Error: '.$e->getMessage(),
+                'ip' => request()->ip(),
             ]);
         }
 
