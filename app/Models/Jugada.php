@@ -96,6 +96,46 @@ class Jugada extends Model
         return $query->where('resultado', 'pendiente_sorteo');
     }
 
+    /**
+     * Scope para aplicar filtros combinados de categoría, fecha, estado y resultado.
+     *
+     * @param  array<string, mixed>  $filtros
+     */
+    public function scopeFiltrar(Builder $query, array $filtros): Builder
+    {
+        if (! empty($filtros['categoria'])) {
+            match ($filtros['categoria']) {
+                'quiniela' => $query->whereHas('detallesQuiniela'),
+                'quini6' => $query->whereHas('detallesQuini6'),
+                'lotoplus' => $query->whereHas('detallesLotoPlus'),
+                'loto5' => $query->whereHas('detallesLoto5'),
+                'poceada' => $query->whereHas('detallesPoceada'),
+                default => null,
+            };
+        }
+
+        if (! empty($filtros['fecha'])) {
+            $query->whereDate('created_at', $filtros['fecha']);
+        } else {
+            if (! empty($filtros['fecha_desde'])) {
+                $query->whereDate('created_at', '>=', $filtros['fecha_desde']);
+            }
+            if (! empty($filtros['fecha_hasta'])) {
+                $query->whereDate('created_at', '<=', $filtros['fecha_hasta']);
+            }
+        }
+
+        if (! empty($filtros['estado'])) {
+            $query->where('estado', $filtros['estado']);
+        }
+
+        if (! empty($filtros['resultado'])) {
+            $query->where('resultado', $filtros['resultado']);
+        }
+
+        return $query;
+    }
+
     // =========================================================================
     // Accessors & Helpers
     // =========================================================================

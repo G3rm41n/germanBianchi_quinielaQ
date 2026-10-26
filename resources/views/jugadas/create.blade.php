@@ -54,7 +54,12 @@
                 {{-- Panel: Quiniela --}}
                 <div class="jugada-form-section" id="panel-quiniela" style="display: block;">
                     <div class="card">
-                        <h2 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; margin-bottom: 1.25rem;">Quiniela Tradicional</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                            <h2 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; margin: 0;">Quiniela Tradicional</h2>
+                            <button type="button" class="btn btn-outline btn-sm btn-random" data-mod="quiniela" title="Generar jugada al azar">
+                                Completar al azar
+                            </button>
+                        </div>
                         
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;" class="quiniela-grid">
                             <div class="form-group">
@@ -103,8 +108,13 @@
                 <div class="jugada-form-section" id="panel-quini6" style="display: none;">
                     <div class="card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-                            <h2 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 600;">Quini 6</h2>
-                            <span class="badge badge-procesado">Elegí 6 números</span>
+                            <h2 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; margin: 0;">Quini 6</h2>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <span class="badge badge-procesado">Elegí 6 números</span>
+                                <button type="button" class="btn btn-outline btn-sm btn-random" data-mod="quini6" title="Elegir 6 números al azar">
+                                    Completar al azar
+                                </button>
+                            </div>
                         </div>
                         <div class="numero-grid" id="grid-quini6"></div>
                     </div>
@@ -114,8 +124,13 @@
                 <div class="jugada-form-section" id="panel-lotoplus" style="display: none;">
                     <div class="card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-                            <h2 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 600;">Loto Plus</h2>
-                            <span class="badge badge-procesado">Elegí 6 números</span>
+                            <h2 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; margin: 0;">Loto Plus</h2>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <span class="badge badge-procesado">Elegí 6 números</span>
+                                <button type="button" class="btn btn-outline btn-sm btn-random" data-mod="lotoplus" title="Elegir números al azar">
+                                    Completar al azar
+                                </button>
+                            </div>
                         </div>
                         <div class="numero-grid" id="grid-lotoplus" style="margin-bottom: 1.5rem;"></div>
 
@@ -132,8 +147,13 @@
                 <div class="jugada-form-section" id="panel-loto5" style="display: none;">
                     <div class="card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-                            <h2 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 600;">Loto 5</h2>
-                            <span class="badge badge-procesado">Elegí 5 números</span>
+                            <h2 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; margin: 0;">Loto 5</h2>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <span class="badge badge-procesado">Elegí 5 números</span>
+                                <button type="button" class="btn btn-outline btn-sm btn-random" data-mod="loto5" title="Elegir 5 números al azar">
+                                    Completar al azar
+                                </button>
+                            </div>
                         </div>
                         <div class="numero-grid" id="grid-loto5"></div>
                     </div>
@@ -143,8 +163,13 @@
                 <div class="jugada-form-section" id="panel-poceada" style="display: none;">
                     <div class="card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-                            <h2 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 600;">Quiniela Poceada</h2>
-                            <span class="badge badge-procesado">Elegí 8 números</span>
+                            <h2 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; margin: 0;">Quiniela Poceada</h2>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <span class="badge badge-procesado">Elegí 8 números</span>
+                                <button type="button" class="btn btn-outline btn-sm btn-random" data-mod="poceada" title="Elegir 8 números al azar">
+                                    Completar al azar
+                                </button>
+                            </div>
                         </div>
                         <div class="numero-grid" id="grid-poceada"></div>
                     </div>

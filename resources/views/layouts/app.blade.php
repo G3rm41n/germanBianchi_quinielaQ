@@ -49,6 +49,12 @@
                     {{-- User actions --}}
                     <div class="navbar-actions">
                         <div class="navbar-user">
+                            @if(!auth()->user()->isAdmin())
+                                <a href="{{ route('jugadas.index') }}#billetera" class="badge-saldo" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.75rem; border-radius: 9999px; background: rgba(212, 160, 23, 0.15); border: 1px solid rgba(212, 160, 23, 0.35); color: var(--color-gold); font-size: 0.85rem; font-weight: 700; transition: all 0.2s;" title="Saldo disponible en tu billetera">
+                                    <span>Saldo:</span>
+                                    <span>${{ number_format(auth()->user()->saldo, 2, ',', '.') }}</span>
+                                </a>
+                            @endif
                             <span class="navbar-user-name">{{ auth()->user()->name }}</span>
                             <form method="POST" action="{{ route('logout') }}" id="form-logout">
                                 @csrf

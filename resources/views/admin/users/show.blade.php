@@ -4,7 +4,7 @@
 <div style="margin-bottom: 2rem;">
     <a href="{{ route('admin.users.index') }}" class="btn btn-ghost btn-sm" style="margin-bottom: 1rem;">&larr; Volver al listado</a>
     <h1 style="font-family: var(--font-display); font-size: 2rem; font-weight: 700; color: var(--color-gold);">Jugadas de: {{ $user->name }}</h1>
-    <p style="color: var(--color-muted); font-size: 0.9rem;">Email: {{ $user->email }} | DNI: {{ $user->dni }}</p>
+    <p style="color: var(--color-muted); font-size: 0.9rem;">Email: {{ $user->email }} | DNI: {{ $user->dni }} | Saldo Actual: <strong style="color: var(--color-gold);">${{ number_format($user->saldo, 2, ',', '.') }}</strong></p>
 </div>
 
 {{-- 1. Tarjetas de Resumen Financiero del Cliente --}}
@@ -13,7 +13,6 @@
     <div class="card" style="padding: 1.25rem; border-left: 4px solid var(--color-primary); background-color: var(--color-surface);">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
             <span style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); letter-spacing: 0.05em;">Total Invertido</span>
-            <span style="font-size: 1.25rem;">🪙</span>
         </div>
         <div style="font-size: 1.6rem; font-weight: 700; color: var(--color-text); font-family: var(--font-display);">
             ${{ number_format($totales['total_invertido'], 2, ',', '.') }}
@@ -25,7 +24,6 @@
     <div class="card" style="padding: 1.25rem; border-left: 4px solid var(--color-success); background-color: var(--color-surface);">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
             <span style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); letter-spacing: 0.05em;">Ganancias del Cliente</span>
-            <span style="font-size: 1.25rem;">🏆</span>
         </div>
         <div style="font-size: 1.6rem; font-weight: 700; color: var(--color-success); font-family: var(--font-display);">
             ${{ number_format($totales['total_ganancias'], 2, ',', '.') }}
@@ -37,7 +35,6 @@
     <div class="card" style="padding: 1.25rem; border-left: 4px solid var(--color-danger); background-color: var(--color-surface);">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
             <span style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); letter-spacing: 0.05em;">Pérdidas del Cliente</span>
-            <span style="font-size: 1.25rem;">📉</span>
         </div>
         <div style="font-size: 1.6rem; font-weight: 700; color: var(--color-danger); font-family: var(--font-display);">
             ${{ number_format($totales['total_perdidas'], 2, ',', '.') }}
@@ -54,18 +51,17 @@
     <div class="card" style="padding: 1.25rem; border-left: 4px solid {{ $colorBalUser }}; background-color: var(--color-surface);">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
             <span style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); letter-spacing: 0.05em;">Balance Neto Cliente</span>
-            <span style="font-size: 1.25rem;">⚖️</span>
         </div>
         <div style="font-size: 1.6rem; font-weight: 700; color: {{ $colorBalUser }}; font-family: var(--font-display);">
             {{ $signoBalUser }}${{ number_format($balUser, 2, ',', '.') }}
         </div>
         <span style="font-size: 0.75rem; color: var(--color-muted);">
             @if($balUser > 0)
-                🟢 Cliente en ganancia
+                Cliente en ganancia
             @elseif($balUser < 0)
-                🔴 Cliente en pérdida
+                Cliente en pérdida
             @else
-                ⚪ En equilibrio
+                En equilibrio
             @endif
         </span>
     </div>
@@ -75,7 +71,7 @@
 <div class="card" style="margin-bottom: 2rem; padding: 0; overflow: hidden;">
     <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--color-border); background-color: rgba(255,255,255,0.02); display: flex; justify-content: space-between; align-items: center;">
         <h3 style="font-family: var(--font-display); font-size: 1.15rem; margin: 0; color: var(--color-text);">
-            📊 Desglose por Categorías de este Cliente
+            Desglose por Categorías de este Cliente
         </h3>
     </div>
 
@@ -100,7 +96,6 @@
                     @endphp
                     <tr style="border-bottom: 1px solid var(--color-border); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='var(--color-surface2)'" onmouseout="this.style.backgroundColor='transparent'">
                         <td style="padding: 1rem 1.25rem; font-weight: 600; color: var(--color-text);">
-                            <span style="margin-right: 0.5rem; font-size: 1.1rem;">{{ $cat['icono'] }}</span>
                             {{ $cat['nombre'] }}
                         </td>
                         <td style="padding: 1rem 1.25rem; text-align: center; color: var(--color-muted);">
@@ -127,9 +122,69 @@
 
 {{-- 3. Historial de Jugadas del Cliente --}}
 <div class="card" style="margin-bottom: 2rem;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--color-border); padding-bottom: 0.75rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--color-border); padding-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
         <h3 style="font-family: var(--font-display); font-size: 1.25rem; color: var(--color-text); margin: 0;">Historial Completo</h3>
+        @if(request()->hasAny(['categoria', 'fecha', 'fecha_desde', 'fecha_hasta', 'estado', 'resultado']))
+            <a href="{{ route('admin.users.show', $user) }}" class="btn btn-ghost btn-sm" style="color: var(--color-danger); border: 1px solid rgba(248,81,73,0.3);">
+                Limpiar Filtros
+            </a>
+        @endif
     </div>
+
+    <form method="GET" action="{{ route('admin.users.show', $user) }}" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) auto; gap: 0.75rem; margin-bottom: 1.5rem; align-items: flex-end; background: var(--color-surface2); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
+        <div>
+            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Categoría</label>
+            <select name="categoria" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
+                <option value="">Todas las categorías</option>
+                <option value="quiniela" {{ request('categoria') === 'quiniela' ? 'selected' : '' }}>Quiniela</option>
+                <option value="quini6" {{ request('categoria') === 'quini6' ? 'selected' : '' }}>Quini 6</option>
+                <option value="lotoplus" {{ request('categoria') === 'lotoplus' ? 'selected' : '' }}>Loto Plus</option>
+                <option value="loto5" {{ request('categoria') === 'loto5' ? 'selected' : '' }}>Loto 5</option>
+                <option value="poceada" {{ request('categoria') === 'poceada' ? 'selected' : '' }}>Poceada</option>
+            </select>
+        </div>
+
+        <div>
+            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Fecha Puntual</label>
+            <input type="date" name="fecha" value="{{ request('fecha') }}" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
+        </div>
+
+        <div>
+            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Desde</label>
+            <input type="date" name="fecha_desde" value="{{ request('fecha_desde') }}" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
+        </div>
+
+        <div>
+            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Hasta</label>
+            <input type="date" name="fecha_hasta" value="{{ request('fecha_hasta') }}" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
+        </div>
+
+        <div>
+            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Envío</label>
+            <select name="estado" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
+                <option value="">Todos los envíos</option>
+                <option value="pendiente" {{ request('estado') === 'pendiente' ? 'selected' : '' }}>Pendientes</option>
+                <option value="procesado" {{ request('estado') === 'procesado' ? 'selected' : '' }}>Procesados</option>
+                <option value="error_envio" {{ request('estado') === 'error_envio' ? 'selected' : '' }}>Error SMTP</option>
+            </select>
+        </div>
+
+        <div>
+            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Resultado</label>
+            <select name="resultado" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
+                <option value="">Todos los resultados</option>
+                <option value="pendiente_sorteo" {{ request('resultado') === 'pendiente_sorteo' ? 'selected' : '' }}>En Sorteo</option>
+                <option value="ganadora" {{ request('resultado') === 'ganadora' ? 'selected' : '' }}>Ganadoras</option>
+                <option value="no_ganadora" {{ request('resultado') === 'no_ganadora' ? 'selected' : '' }}>No Ganadoras</option>
+            </select>
+        </div>
+
+        <div>
+            <button type="submit" class="btn btn-primary btn-sm" style="height: 36px; padding: 0 1.25rem;">
+                Filtrar
+            </button>
+        </div>
+    </form>
 
     <div style="overflow-x: auto;">
         <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; color: var(--color-text);">
@@ -177,14 +232,14 @@
                             @csrf
                             @method('PATCH')
                             <select name="resultado" class="form-input" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; width: auto;" onchange="const wrap = this.parentElement.querySelector('.premio-wrap'); if(this.value==='ganadora'){ wrap.style.display='flex'; } else { wrap.style.display='none'; this.form.submit(); }">
-                                <option value="pendiente_sorteo" {{ $jugada->resultado === 'pendiente_sorteo' ? 'selected' : '' }}>⏳ En Sorteo</option>
-                                <option value="ganadora" {{ $jugada->resultado === 'ganadora' ? 'selected' : '' }}>🏆 Ganadora</option>
-                                <option value="no_ganadora" {{ $jugada->resultado === 'no_ganadora' ? 'selected' : '' }}>❌ No Ganadora</option>
+                                <option value="pendiente_sorteo" {{ $jugada->resultado === 'pendiente_sorteo' ? 'selected' : '' }}>En Sorteo</option>
+                                <option value="ganadora" {{ $jugada->resultado === 'ganadora' ? 'selected' : '' }}>Ganadora</option>
+                                <option value="no_ganadora" {{ $jugada->resultado === 'no_ganadora' ? 'selected' : '' }}>No Ganadora</option>
                             </select>
 
                             <div class="premio-wrap" style="display: {{ $jugada->resultado === 'ganadora' ? 'flex' : 'none' }}; gap: 0.25rem; align-items: center; margin-top: 0.25rem;">
                                 <input type="number" step="0.01" min="0" name="monto_premio" class="form-input" value="{{ $jugada->monto_premio ?: '' }}" placeholder="$ Premio" style="width: 85px; padding: 0.2rem 0.4rem; font-size: 0.75rem;">
-                                <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" title="Guardar Premio">💾</button>
+                                <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" title="Guardar Premio">Guardar</button>
                             </div>
 
                             @if($jugada->resultado === 'ganadora')
@@ -218,7 +273,6 @@
                 @empty
                 <tr>
                     <td colspan="6" style="text-align: center; padding: 3rem;">
-                        <span style="font-size: 2.5rem; opacity: 0.5;">📭</span><br>
                         <span style="color: var(--color-muted); display: block; margin-top: 1rem;">El cliente no tiene jugadas registradas.</span>
                     </td>
                 </tr>

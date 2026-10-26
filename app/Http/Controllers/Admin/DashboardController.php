@@ -13,17 +13,11 @@ class DashboardController extends Controller
 {
     public function index(Request $request, BalanceService $balanceService)
     {
-        $query = Jugada::with(['user', 'detallesQuiniela', 'detallesQuini6', 'detallesLotoPlus', 'detallesLoto5', 'detallesPoceada'])->latest();
-
-        if ($request->filled('estado')) {
-            $query->where('estado', $request->estado);
-        }
-
-        if ($request->filled('resultado')) {
-            $query->where('resultado', $request->resultado);
-        }
-
-        $jugadas = $query->paginate(20)->withQueryString();
+        $jugadas = Jugada::with(['user', 'detallesQuiniela', 'detallesQuini6', 'detallesLotoPlus', 'detallesLoto5', 'detallesPoceada'])
+            ->filtrar($request->all())
+            ->latest()
+            ->paginate(20)
+            ->withQueryString();
 
         $preciosVigentes = PrecioHistorico::vigente()->get();
         $preciosMap = $preciosVigentes->pluck('valor', 'tipo_juego')->toArray();

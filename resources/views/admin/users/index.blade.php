@@ -41,7 +41,6 @@
                 @empty
                 <tr>
                     <td colspan="5" style="text-align: center; padding: 3rem;">
-                        <span style="font-size: 2.5rem; opacity: 0.5;">👥</span><br>
                         <span style="color: var(--color-muted); display: block; margin-top: 1rem;">No hay clientes registrados en el sistema.</span>
                     </td>
                 </tr>

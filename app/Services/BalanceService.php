@@ -81,7 +81,7 @@ class BalanceService
         $categorias = [
             'quiniela' => [
                 'nombre' => 'Quiniela Tradicional',
-                'icono' => '🎰',
+                'icono' => '',
                 'cantidad_jugadas' => 0,
                 'total_invertido' => 0.0,
                 'total_ganancias' => 0.0,
@@ -90,7 +90,7 @@ class BalanceService
             ],
             'quini6' => [
                 'nombre' => 'Quini 6',
-                'icono' => '6️⃣',
+                'icono' => '',
                 'cantidad_jugadas' => 0,
                 'total_invertido' => 0.0,
                 'total_ganancias' => 0.0,
@@ -99,7 +99,7 @@ class BalanceService
             ],
             'lotoplus' => [
                 'nombre' => 'Loto Plus',
-                'icono' => '➕',
+                'icono' => '',
                 'cantidad_jugadas' => 0,
                 'total_invertido' => 0.0,
                 'total_ganancias' => 0.0,
@@ -108,7 +108,7 @@ class BalanceService
             ],
             'loto5' => [
                 'nombre' => 'Loto 5',
-                'icono' => '5️⃣',
+                'icono' => '',
                 'cantidad_jugadas' => 0,
                 'total_invertido' => 0.0,
                 'total_ganancias' => 0.0,
@@ -117,7 +117,7 @@ class BalanceService
             ],
             'poceada' => [
                 'nombre' => 'Quiniela Poceada',
-                'icono' => '🏆',
+                'icono' => '',
                 'cantidad_jugadas' => 0,
                 'total_invertido' => 0.0,
                 'total_ganancias' => 0.0,

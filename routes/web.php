@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\BilleteraController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\JugadaController;
 use App\Http\Middleware\AdminMiddleware;
@@ -41,6 +42,9 @@ Route::middleware('auth')->group(function () {
 
     // Descargar PDF (stub — Fase 4)
     Route::get('/jugadas/{jugada}/pdf', [JugadaController::class, 'downloadPdf'])->name('jugadas.pdf');
+
+    // Billetera y recarga de saldo (Fase 8)
+    Route::post('/billetera/recargar', [BilleteraController::class, 'recargar'])->name('billetera.recargar');
 });
 
 Route::prefix('admin')->middleware(['auth', AdminMiddleware::class])->group(function () {

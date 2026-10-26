@@ -33,17 +33,27 @@ class JugadaAdminController extends Controller
             'monto_premio' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        $montoPremio = $validated['resultado'] === 'ganadora' ? (float) ($validated['monto_premio'] ?? 0) : 0;
+        $premioAnterior = (float) ($jugada->monto_premio ?? 0);
+        $montoPremio = $validated['resultado'] === 'ganadora' ? (float) ($validated['monto_premio'] ?? 0) : 0.0;
+        $diferenciaPremio = $montoPremio - $premioAnterior;
 
-        $jugada->update([
-            'resultado' => $validated['resultado'],
-            'monto_premio' => $montoPremio,
-        ]);
+        DB::transaction(function () use ($jugada, $validated, $montoPremio, $diferenciaPremio) {
+            $jugada->update([
+                'resultado' => $validated['resultado'],
+                'monto_premio' => $montoPremio,
+            ]);
+
+            if ($diferenciaPremio > 0) {
+                $jugada->user->acreditarSaldo($diferenciaPremio);
+            } elseif ($diferenciaPremio < 0) {
+                $jugada->user->decrement('saldo', abs($diferenciaPremio));
+            }
+        });
 
         AuditLog::create([
             'user_id' => auth()->id(),
             'accion' => 'resultado_actualizado',
-            'descripcion' => "Jugada #{$jugada->id} actualizada a resultado: {$validated['resultado']}, premio: \${$montoPremio}",
+            'descripcion' => "Jugada #{$jugada->id} actualizada a resultado: {$validated['resultado']}, premio: \${$montoPremio}".($diferenciaPremio != 0 ? " (Ajuste de saldo cliente: \${$diferenciaPremio})" : ''),
             'ip' => request()->ip() ?: '127.0.0.1',
         ]);
 

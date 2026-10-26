@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\BalanceService;
+use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
@@ -20,13 +21,15 @@ class UserController extends Controller
         return view('admin.users.index', compact('users'));
     }
 
-    public function show(User $user, BalanceService $balanceService)
+    public function show(Request $request, User $user, BalanceService $balanceService)
     {
-        // Traemos las jugadas del usuario específico
+        // Traemos las jugadas del usuario específico con filtros aplicados
         $jugadas = $user->jugadas()
             ->with(['detallesQuiniela', 'detallesQuini6', 'detallesLotoPlus', 'detallesLoto5', 'detallesPoceada'])
+            ->filtrar($request->all())
             ->latest()
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
         $totales = $balanceService->obtenerTotales($user->id);
         $categorias = $balanceService->obtenerDesgloseCategorias($user->id);

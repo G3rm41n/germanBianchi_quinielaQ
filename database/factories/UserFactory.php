@@ -29,6 +29,7 @@ class UserFactory extends Factory
             'dni' => fake()->unique()->numerify('########'),
             'email' => fake()->unique()->safeEmail(),
             'rol' => 'cliente',
+            'saldo' => 10000.00,
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),

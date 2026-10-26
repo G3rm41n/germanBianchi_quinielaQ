@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\BalanceService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -19,15 +20,17 @@ use Illuminate\View\View;
 
 class JugadaController extends Controller
 {
-    public function index(BalanceService $balanceService): View
+    public function index(Request $request, BalanceService $balanceService): View
     {
         $userId = (int) Auth::id();
 
         $jugadas = Auth::user()
             ->jugadas()
             ->with(['detallesQuiniela', 'detallesQuini6', 'detallesLotoPlus', 'detallesLoto5', 'detallesPoceada'])
-            ->orderByDesc('created_at')
-            ->paginate(10);
+            ->filtrar($request->all())
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
 
         $totales = $balanceService->obtenerTotales($userId);
         $categorias = $balanceService->obtenerDesgloseCategorias($userId);
@@ -64,11 +67,19 @@ class JugadaController extends Controller
         }
 
         $cart = $request->input('cart');
+        $montoTotalBoleta = (float) collect($cart)->sum('costo');
 
-        // 2. Procesar y guardar en transacción
+        // Validar saldo suficiente
+        if (! $user->tieneSaldoSuficiente($montoTotalBoleta)) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Saldo insuficiente ($'.number_format($user->saldo, 2, ',', '.').' disponible). Necesitás $'.number_format($montoTotalBoleta, 2, ',', '.').' para confirmar esta boleta.');
+        }
+
+        // 2. Procesar y guardar en transacción con débito de saldo
         $jugada = null;
-        DB::transaction(function () use ($request, $user, $cart, &$jugada) {
-            $montoTotalBoleta = collect($cart)->sum('costo');
+        DB::transaction(function () use ($request, $user, $cart, $montoTotalBoleta, &$jugada) {
+            $user->debitarSaldo($montoTotalBoleta);
 
             $jugada = Jugada::create([
                 'user_id' => $user->id,

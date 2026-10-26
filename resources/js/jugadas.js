@@ -14,6 +14,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnSubmit = document.getElementById('btn-submit-cart');
     const hiddenCartInput = document.getElementById('cart_data');
 
+    // Inputs de formularios
+    const inputQuinielaNum = document.getElementById('numero');
+    const inputQuinielaJur = document.getElementById('jurisdiccion');
+    const inputQuinielaImp = document.getElementById('importe');
+    const inputLotoPlusPlus = document.getElementById('numero_plus');
+    const selectRangoPos = document.getElementById('rango_posiciones');
+    const btnClearPos = document.getElementById('btn-clear-posiciones');
+
     // 2. Precios y Estado
     const preciosData = document.getElementById('precios-data');
     const PRECIOS = {
@@ -157,9 +165,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderGrid('poceada', 0, 99, true);
 
     // Quiniela Range Logic
-    const selectRangoPos = document.getElementById('rango_posiciones');
-    const btnClearPos = document.getElementById('btn-clear-posiciones');
-
     if (selectRangoPos) {
         selectRangoPos.addEventListener('change', (e) => {
             const limit = parseInt(e.target.value);
@@ -185,12 +190,66 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 6. Form Inputs & Validaciones
-    const inputQuinielaNum = document.getElementById('numero');
-    const inputQuinielaJur = document.getElementById('jurisdiccion');
-    const inputQuinielaImp = document.getElementById('importe');
-    const inputLotoPlusPlus = document.getElementById('numero_plus');
+    // 6. Generador de Jugadas Aleatorias (Quick Pick)
+    const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
+    const getRandomUniqueNumbers = (count, min, max) => {
+        const pool = [];
+        for (let i = min; i <= max; i++) pool.push(i);
+        const result = [];
+        for (let i = 0; i < count; i++) {
+            const idx = Math.floor(Math.random() * pool.length);
+            result.push(pool.splice(idx, 1)[0]);
+        }
+        return result.sort((a, b) => a - b);
+    };
+
+    const generarJugadaAzar = (mod) => {
+        if (mod === 'quiniela') {
+            const num = getRandomInt(10, 9999).toString();
+            if (inputQuinielaNum) inputQuinielaNum.value = num;
+
+            const jurisdicciones = ['nacion', 'provincia', 'santa_fe', 'cordoba'];
+            if (inputQuinielaJur) {
+                inputQuinielaJur.value = jurisdicciones[Math.floor(Math.random() * jurisdicciones.length)];
+            }
+
+            const importes = [500, 1000, 1500, 2000];
+            if (inputQuinielaImp) {
+                inputQuinielaImp.value = importes[Math.floor(Math.random() * importes.length)];
+            }
+
+            const rangos = [1, 5, 10, 20];
+            const elegido = rangos[Math.floor(Math.random() * rangos.length)];
+            if (selectRangoPos) selectRangoPos.value = elegido.toString();
+
+            state.selecciones.quiniela = [];
+            for (let i = 1; i <= elegido; i++) {
+                state.selecciones.quiniela.push(i);
+            }
+            updateGridUI('quiniela');
+        } else if (mod === 'quini6') {
+            state.selecciones.quini6 = getRandomUniqueNumbers(6, 0, 45);
+            updateGridUI('quini6');
+        } else if (mod === 'lotoplus') {
+            state.selecciones.lotoplus = getRandomUniqueNumbers(6, 0, 45);
+            updateGridUI('lotoplus');
+            if (inputLotoPlusPlus) {
+                inputLotoPlusPlus.value = getRandomInt(0, 9);
+            }
+        } else if (mod === 'loto5') {
+            state.selecciones.loto5 = getRandomUniqueNumbers(5, 0, 36);
+            updateGridUI('loto5');
+        } else if (mod === 'poceada') {
+            state.selecciones.poceada = getRandomUniqueNumbers(8, 0, 99);
+            updateGridUI('poceada');
+        }
+
+        updateResumen();
+        checkValidity();
+    };
+
+    // 7. Form Inputs & Validaciones
     const updateResumen = () => {
         const mod = state.modalidad;
         let costo = 0;
@@ -358,6 +417,14 @@ document.addEventListener('DOMContentLoaded', () => {
         state.cart.push(item);
         renderCart();
         resetSelections();
+    });
+
+    // Botones de juego al azar
+    document.querySelectorAll('.btn-random').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const mod = e.currentTarget.dataset.mod;
+            generarJugadaAzar(mod);
+        });
     });
 
     updateResumen();
