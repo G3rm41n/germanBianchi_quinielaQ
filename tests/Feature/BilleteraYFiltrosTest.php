@@ -198,6 +198,40 @@ test('filtra jugadas por fecha puntual y por rango de fechas', function () {
     $resRango->assertDontSee('#'.str_pad($j1->id, 8, '0', STR_PAD_LEFT));
 });
 
+test('filtra jugadas por resultado y por estado en el panel del cliente', function () {
+    $jGanadora = Jugada::create([
+        'user_id' => $this->cliente->id,
+        'monto_total' => 1200.00,
+        'estado' => 'procesado',
+        'resultado' => 'ganadora',
+        'monto_premio' => 50000.00,
+        'idempotency_token' => (string) Str::uuid(),
+    ]);
+
+    $jPendiente = Jugada::create([
+        'user_id' => $this->cliente->id,
+        'monto_total' => 800.00,
+        'estado' => 'pendiente',
+        'resultado' => 'no_ganadora',
+        'monto_premio' => 0.0,
+        'idempotency_token' => (string) Str::uuid(),
+    ]);
+
+    // Filtro por resultado: ganadora
+    $resGanadora = $this->actingAs($this->cliente)
+        ->get(route('jugadas.index', ['resultado' => 'ganadora']));
+
+    $resGanadora->assertSee('#'.str_pad($jGanadora->id, 8, '0', STR_PAD_LEFT));
+    $resGanadora->assertDontSee('#'.str_pad($jPendiente->id, 8, '0', STR_PAD_LEFT));
+
+    // Filtro por estado: pendiente
+    $resPendiente = $this->actingAs($this->cliente)
+        ->get(route('jugadas.index', ['estado' => 'pendiente']));
+
+    $resPendiente->assertSee('#'.str_pad($jPendiente->id, 8, '0', STR_PAD_LEFT));
+    $resPendiente->assertDontSee('#'.str_pad($jGanadora->id, 8, '0', STR_PAD_LEFT));
+});
+
 test('el panel de administracion filtra por categoria y fechas correctamente', function () {
     $jQuiniela = Jugada::create([
         'user_id' => $this->cliente->id,

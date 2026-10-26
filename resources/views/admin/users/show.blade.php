@@ -122,69 +122,101 @@
 
 {{-- 3. Historial de Jugadas del Cliente --}}
 <div class="card" style="margin-bottom: 2rem;">
+    @php
+        $filtrosActivosUser = collect(['categoria', 'fecha', 'fecha_desde', 'fecha_hasta', 'estado', 'resultado'])
+            ->filter(fn($key) => request()->filled($key))
+            ->count();
+    @endphp
+
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--color-border); padding-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
         <h3 style="font-family: var(--font-display); font-size: 1.25rem; color: var(--color-text); margin: 0;">Historial Completo</h3>
-        @if(request()->hasAny(['categoria', 'fecha', 'fecha_desde', 'fecha_hasta', 'estado', 'resultado']))
-            <a href="{{ route('admin.users.show', $user) }}" class="btn btn-ghost btn-sm" style="color: var(--color-danger); border: 1px solid rgba(248,81,73,0.3);">
-                Limpiar Filtros
-            </a>
-        @endif
-    </div>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            @if($filtrosActivosUser > 0)
+                <a href="{{ route('admin.users.show', $user) }}" class="btn btn-ghost btn-sm" style="color: var(--color-danger); border: 1px solid rgba(248,81,73,0.35);">
+                    Limpiar Filtros ({{ $filtrosActivosUser }})
+                </a>
+            @endif
 
-    <form method="GET" action="{{ route('admin.users.show', $user) }}" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) auto; gap: 0.75rem; margin-bottom: 1.5rem; align-items: flex-end; background: var(--color-surface2); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
-        <div>
-            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Categoría</label>
-            <select name="categoria" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
-                <option value="">Todas las categorías</option>
-                <option value="quiniela" {{ request('categoria') === 'quiniela' ? 'selected' : '' }}>Quiniela</option>
-                <option value="quini6" {{ request('categoria') === 'quini6' ? 'selected' : '' }}>Quini 6</option>
-                <option value="lotoplus" {{ request('categoria') === 'lotoplus' ? 'selected' : '' }}>Loto Plus</option>
-                <option value="loto5" {{ request('categoria') === 'loto5' ? 'selected' : '' }}>Loto 5</option>
-                <option value="poceada" {{ request('categoria') === 'poceada' ? 'selected' : '' }}>Poceada</option>
-            </select>
-        </div>
-
-        <div>
-            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Fecha Puntual</label>
-            <input type="date" name="fecha" value="{{ request('fecha') }}" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
-        </div>
-
-        <div>
-            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Desde</label>
-            <input type="date" name="fecha_desde" value="{{ request('fecha_desde') }}" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
-        </div>
-
-        <div>
-            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Hasta</label>
-            <input type="date" name="fecha_hasta" value="{{ request('fecha_hasta') }}" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
-        </div>
-
-        <div>
-            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Envío</label>
-            <select name="estado" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
-                <option value="">Todos los envíos</option>
-                <option value="pendiente" {{ request('estado') === 'pendiente' ? 'selected' : '' }}>Pendientes</option>
-                <option value="procesado" {{ request('estado') === 'procesado' ? 'selected' : '' }}>Procesados</option>
-                <option value="error_envio" {{ request('estado') === 'error_envio' ? 'selected' : '' }}>Error SMTP</option>
-            </select>
-        </div>
-
-        <div>
-            <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Resultado</label>
-            <select name="resultado" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
-                <option value="">Todos los resultados</option>
-                <option value="pendiente_sorteo" {{ request('resultado') === 'pendiente_sorteo' ? 'selected' : '' }}>En Sorteo</option>
-                <option value="ganadora" {{ request('resultado') === 'ganadora' ? 'selected' : '' }}>Ganadoras</option>
-                <option value="no_ganadora" {{ request('resultado') === 'no_ganadora' ? 'selected' : '' }}>No Ganadoras</option>
-            </select>
-        </div>
-
-        <div>
-            <button type="submit" class="btn btn-primary btn-sm" style="height: 36px; padding: 0 1.25rem;">
-                Filtrar
+            <button type="button" onclick="toggleMenuFiltrosUser()" class="btn {{ $filtrosActivosUser > 0 ? 'btn-primary' : 'btn-outline' }} btn-sm" style="display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+                <span>Filtrar Jugadas</span>
+                @if($filtrosActivosUser > 0)
+                    <span style="background: rgba(255,255,255,0.25); border-radius: 9999px; padding: 0.1rem 0.45rem; font-size: 0.75rem;">{{ $filtrosActivosUser }}</span>
+                @endif
+                <span id="icono-chevron-user" style="font-size: 0.75rem; transition: transform 0.2s;">{{ $filtrosActivosUser > 0 ? '▲' : '▼' }}</span>
             </button>
         </div>
-    </form>
+    </div>
+
+    <div id="menu-filtros-user" style="display: {{ $filtrosActivosUser > 0 ? 'block' : 'none' }}; margin-bottom: 1.5rem;">
+        <form method="GET" action="{{ route('admin.users.show', $user) }}" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) auto; gap: 0.75rem; align-items: flex-end; background: var(--color-surface2); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--color-border);">
+            <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Categoría</label>
+                <select name="categoria" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
+                    <option value="">Todas las categorías</option>
+                    <option value="quiniela" {{ request('categoria') === 'quiniela' ? 'selected' : '' }}>Quiniela</option>
+                    <option value="quini6" {{ request('categoria') === 'quini6' ? 'selected' : '' }}>Quini 6</option>
+                    <option value="lotoplus" {{ request('categoria') === 'lotoplus' ? 'selected' : '' }}>Loto Plus</option>
+                    <option value="loto5" {{ request('categoria') === 'loto5' ? 'selected' : '' }}>Loto 5</option>
+                    <option value="poceada" {{ request('categoria') === 'poceada' ? 'selected' : '' }}>Poceada</option>
+                </select>
+            </div>
+
+            <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Fecha Puntual</label>
+                <input type="date" name="fecha" value="{{ request('fecha') }}" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
+            </div>
+
+            <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Desde</label>
+                <input type="date" name="fecha_desde" value="{{ request('fecha_desde') }}" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
+            </div>
+
+            <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Hasta</label>
+                <input type="date" name="fecha_hasta" value="{{ request('fecha_hasta') }}" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
+            </div>
+
+            <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Envío</label>
+                <select name="estado" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
+                    <option value="">Todos los envíos</option>
+                    <option value="pendiente" {{ request('estado') === 'pendiente' ? 'selected' : '' }}>Pendientes</option>
+                    <option value="procesado" {{ request('estado') === 'procesado' ? 'selected' : '' }}>Procesados</option>
+                    <option value="error_envio" {{ request('estado') === 'error_envio' ? 'selected' : '' }}>Error SMTP</option>
+                </select>
+            </div>
+
+            <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 0.35rem;">Resultado</label>
+                <select name="resultado" class="form-input" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
+                    <option value="">Todos los resultados</option>
+                    <option value="pendiente_sorteo" {{ request('resultado') === 'pendiente_sorteo' ? 'selected' : '' }}>En Sorteo</option>
+                    <option value="ganadora" {{ request('resultado') === 'ganadora' ? 'selected' : '' }}>Ganadoras</option>
+                    <option value="no_ganadora" {{ request('resultado') === 'no_ganadora' ? 'selected' : '' }}>No Ganadoras</option>
+                </select>
+            </div>
+
+            <div>
+                <button type="submit" class="btn btn-primary btn-sm" style="height: 36px; padding: 0 1.25rem;">
+                    Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        function toggleMenuFiltrosUser() {
+            const menu = document.getElementById('menu-filtros-user');
+            const chevron = document.getElementById('icono-chevron-user');
+            if (menu.style.display === 'none' || menu.style.display === '') {
+                menu.style.display = 'block';
+                if (chevron) chevron.textContent = '▲';
+            } else {
+                menu.style.display = 'none';
+                if (chevron) chevron.textContent = '▼';
+            }
+        }
+    </script>
 
     <div style="overflow-x: auto;">
         <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; color: var(--color-text);">
