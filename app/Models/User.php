@@ -6,6 +6,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -84,5 +85,32 @@ class User extends Authenticatable
     public function auditLogs(): HasMany
     {
         return $this->hasMany(AuditLog::class);
+    }
+
+    /**
+     * Scope para filtrar clientes por inicial de nombre, apellido, cantidad de jugadas y volumen.
+     *
+     * @param  array<string, mixed>  $filtros
+     */
+    public function scopeFiltrarClientes(Builder $query, array $filtros): Builder
+    {
+        if (! empty($filtros['inicial_nombre'])) {
+            $query->where('name', 'LIKE', trim($filtros['inicial_nombre']).'%');
+        }
+
+        if (! empty($filtros['inicial_apellido'])) {
+            $query->where('name', 'LIKE', '% '.trim($filtros['inicial_apellido']).'%');
+        }
+
+        if (! empty($filtros['min_jugadas'])) {
+            $query->has('jugadas', '>=', (int) $filtros['min_jugadas']);
+        }
+
+        if (! empty($filtros['min_volumen']) && is_numeric($filtros['min_volumen'])) {
+            $minVol = (float) $filtros['min_volumen'];
+            $query->whereRaw("(SELECT COALESCE(SUM(monto_total), 0) FROM jugadas WHERE jugadas.user_id = users.id) >= {$minVol}");
+        }
+
+        return $query;
     }
 }

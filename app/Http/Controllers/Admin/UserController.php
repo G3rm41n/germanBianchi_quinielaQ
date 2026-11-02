@@ -9,14 +9,16 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Traemos los clientes (rol = cliente) ordenados por fecha de registro
+        // Traemos los clientes (rol = cliente) ordenados por fecha de registro con filtros aplicados
         $users = User::where('rol', 'cliente')
+            ->filtrarClientes($request->all())
             ->withCount('jugadas')
             ->withSum('jugadas', 'monto_total')
             ->latest()
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
         return view('admin.users.index', compact('users'));
     }

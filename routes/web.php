@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ClienteExcelController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\JugadaAdminController;
 use App\Http\Controllers\Admin\PrecioController;
@@ -57,7 +58,10 @@ Route::prefix('admin')->middleware(['auth', AdminMiddleware::class])->group(func
 
     Route::put('/precios/{tipo_juego}', [PrecioController::class, 'update'])->name('admin.precios.update');
 
-    // Gestión de usuarios
+    // Gestión de usuarios y herramientas Excel
+    Route::get('/usuarios/exportar', [ClienteExcelController::class, 'exportar'])->name('admin.users.exportar');
+    Route::get('/usuarios/plantilla-ejemplo', [ClienteExcelController::class, 'descargarPlantilla'])->name('admin.users.plantilla');
+    Route::post('/usuarios/importar', [ClienteExcelController::class, 'importar'])->name('admin.users.importar');
     Route::get('/usuarios', [UserController::class, 'index'])->name('admin.users.index');
     Route::get('/usuarios/{user}', [UserController::class, 'show'])->name('admin.users.show');
 });
