@@ -41,7 +41,12 @@
 
             {{-- Contraseña --}}
             <div class="form-group">
-                <label for="password" class="form-label">Contraseña</label>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                    <label for="password" class="form-label" style="margin-bottom: 0;">Contraseña</label>
+                    <a href="{{ route('password.request') }}" style="font-size: 0.78rem; color: var(--color-gold); text-decoration: none;">
+                        ¿Olvidaste tu contraseña?
+                    </a>
+                </div>
                 <input
                     type="password"
                     id="password"

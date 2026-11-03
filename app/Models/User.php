@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Notifications\CustomResetPasswordNotification;
+use App\Notifications\CustomVerifyEmailNotification;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,10 +16,26 @@ use Illuminate\Notifications\Notifiable;
 
 #[Fillable(['name', 'dni', 'email', 'password', 'rol', 'saldo'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    /**
+     * Enviar notificación personalizada para restablecer contraseña.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new CustomResetPasswordNotification($token));
+    }
+
+    /**
+     * Enviar notificación personalizada para verificar dirección de correo.
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new CustomVerifyEmailNotification);
+    }
 
     /**
      * Get the attributes that should be cast.
@@ -88,12 +106,28 @@ class User extends Authenticatable
     }
 
     /**
-     * Scope para filtrar clientes por inicial de nombre, apellido, cantidad de jugadas y volumen.
+     * Scope para filtrar clientes por búsqueda de texto (nombre o apellido), cantidad de jugadas y volumen.
      *
      * @param  array<string, mixed>  $filtros
      */
     public function scopeFiltrarClientes(Builder $query, array $filtros): Builder
     {
+        if (! empty($filtros['buscar'])) {
+            $busqueda = trim((string) $filtros['buscar']);
+            $terminos = preg_split('/\s+/', $busqueda, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+            $query->where(function (Builder $subQuery) use ($terminos, $busqueda) {
+                $subQuery->where(function (Builder $nameQuery) use ($terminos) {
+                    foreach ($terminos as $termino) {
+                        $nameQuery->where('name', 'LIKE', '%'.$termino.'%');
+                    }
+                });
+
+                $subQuery->orWhere('dni', 'LIKE', '%'.$busqueda.'%')
+                    ->orWhere('email', 'LIKE', '%'.$busqueda.'%');
+            });
+        }
+
         if (! empty($filtros['inicial_nombre'])) {
             $query->where('name', 'LIKE', trim($filtros['inicial_nombre']).'%');
         }

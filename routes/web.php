@@ -5,9 +5,12 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\JugadaAdminController;
 use App\Http\Controllers\Admin\PrecioController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\Auth\VerificationController;
 use App\Http\Controllers\BilleteraController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\JugadaController;
@@ -23,6 +26,13 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
     Route::get('/login', [LoginController::class, 'create'])->name('login');
     Route::post('/login', [LoginController::class, 'store'])->name('login.store');
+
+    // Recuperación de Contraseña
+    Route::get('/forgot-password', [ForgotPasswordController::class, 'create'])->name('password.request');
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'store'])->name('password.email');
+    Route::get('/forgot-password/sent', [ForgotPasswordController::class, 'sent'])->name('password.sent');
+    Route::get('/reset-password/{token}', [ResetPasswordController::class, 'create'])->name('password.reset');
+    Route::post('/reset-password', [ResetPasswordController::class, 'store'])->name('password.update');
 });
 
 // Logout
@@ -30,8 +40,16 @@ Route::post('/logout', [LogoutController::class, 'destroy'])
     ->name('logout')
     ->middleware('auth');
 
-// Panel del cliente (Fase 3)
+// Panel del cliente y Verificación de Correo (Fase 3 & Auth)
 Route::middleware('auth')->group(function () {
+    // Verificación de Correo Electrónico
+    Route::get('/email/verify', [VerificationController::class, 'notice'])->name('verification.notice');
+    Route::get('/email/verify/{id}/{hash}', [VerificationController::class, 'verify'])
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+    Route::post('/email/verification-notification', [VerificationController::class, 'send'])
+        ->middleware(['throttle:6,1'])
+        ->name('verification.send');
     // Historial de jugadas del cliente
     Route::get('/jugadas', [JugadaController::class, 'index'])->name('jugadas.index');
 

@@ -20,6 +20,19 @@ class UserController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        if ($request->ajax() || $request->wantsJson()) {
+            $filtrosActivos = collect(['buscar', 'min_jugadas', 'min_volumen', 'inicial_nombre', 'inicial_apellido'])
+                ->filter(fn ($key) => $request->filled($key))
+                ->count();
+
+            return response()->json([
+                'html' => view('admin.users._table', compact('users', 'filtrosActivos'))->render(),
+                'total' => $users->total(),
+                'export_url' => route('admin.users.exportar', $request->query()),
+                'filtros_activos' => $filtrosActivos,
+            ]);
+        }
+
         return view('admin.users.index', compact('users'));
     }
 

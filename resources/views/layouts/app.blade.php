@@ -81,11 +81,46 @@
 
     {{-- ===== Contenido principal ===== --}}
     <main class="main-content" role="main">
+        {{-- Aviso de Verificación de Email --}}
+        @auth
+            @if(!auth()->user()->hasVerifiedEmail())
+                <div class="container" style="padding-top: 1.25rem;">
+                    <div class="alert alert-warning" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;" role="alert">
+                        <span>
+                            📧 <strong>Tu correo electrónico aún no está verificado.</strong> Por favor revisa tu bandeja de entrada para confirmar tu cuenta.
+                        </span>
+                        <form method="POST" action="{{ route('verification.send') }}" style="margin: 0;">
+                            @csrf
+                            <button type="submit" class="btn btn-primary btn-sm" style="font-size: 0.78rem; padding: 0.3rem 0.75rem;">
+                                Reenviar correo de verificación
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            @endif
+        @endauth
+
         {{-- Flash messages --}}
+        @if(session('status') === 'verification-link-sent')
+            <div class="container" style="padding-top: 1.25rem;">
+                <div class="alert alert-success" role="alert">
+                    ¡Listo! Se ha enviado un nuevo enlace de verificación a tu casilla de correo.
+                </div>
+            </div>
+        @endif
+
         @if(session('success'))
             <div class="container" style="padding-top: 1.25rem;">
                 <div class="alert alert-success" role="alert">
                     {{ session('success') }}
+                </div>
+            </div>
+        @endif
+
+        @if(session('info'))
+            <div class="container" style="padding-top: 1.25rem;">
+                <div class="alert alert-warning" role="alert">
+                    {{ session('info') }}
                 </div>
             </div>
         @endif

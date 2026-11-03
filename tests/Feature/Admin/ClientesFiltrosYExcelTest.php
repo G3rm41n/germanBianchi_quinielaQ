@@ -43,6 +43,55 @@ it('permite filtrar clientes por inicial del apellido', function () {
     $response->assertDontSee('Pedro Álvarez');
 });
 
+it('permite buscar clientes por texto manual en tiempo real (nombre o apellido)', function () {
+    User::factory()->create(['name' => 'Carlos Gómez', 'rol' => 'cliente']);
+    User::factory()->create(['name' => 'Ana Martínez', 'rol' => 'cliente']);
+    User::factory()->create(['name' => 'Lucas Silva', 'rol' => 'cliente']);
+
+    // Buscar por apellido
+    $resApellido = $this->actingAs($this->admin)
+        ->get(route('admin.users.index', ['buscar' => 'Gómez']))
+        ->assertStatus(200);
+    $resApellido->assertSee('Carlos Gómez');
+    $resApellido->assertDontSee('Ana Martínez');
+    $resApellido->assertDontSee('Lucas Silva');
+
+    // Buscar por nombre
+    $resNombre = $this->actingAs($this->admin)
+        ->get(route('admin.users.index', ['buscar' => 'Lucas']))
+        ->assertStatus(200);
+    $resNombre->assertSee('Lucas Silva');
+    $resNombre->assertDontSee('Carlos Gómez');
+
+    // Buscar letras parciales o nombre y apellido juntos
+    $resCombinado = $this->actingAs($this->admin)
+        ->get(route('admin.users.index', ['buscar' => 'Ana Mart']))
+        ->assertStatus(200);
+    $resCombinado->assertSee('Ana Martínez');
+    $resCombinado->assertDontSee('Lucas Silva');
+});
+
+it('responde en formato json para busquedas ajax en tiempo real', function () {
+    User::factory()->create(['name' => 'Roberto Sánchez', 'rol' => 'cliente']);
+    User::factory()->create(['name' => 'Diana Prince', 'rol' => 'cliente']);
+
+    $response = $this->actingAs($this->admin)
+        ->getJson(route('admin.users.index', ['buscar' => 'Roberto']))
+        ->assertStatus(200)
+        ->assertJsonStructure([
+            'html',
+            'total',
+            'export_url',
+            'filtros_activos',
+        ]);
+
+    $data = $response->json();
+    expect($data['total'])->toBe(1);
+    expect($data['html'])->toContain('Roberto Sánchez');
+    expect($data['html'])->not->toContain('Diana Prince');
+    expect($data['export_url'])->toContain('buscar=Roberto');
+});
+
 it('permite filtrar clientes por cantidad minima de jugadas', function () {
     $clienteConJugadas = User::factory()->create(['name' => 'Cliente Frecuente', 'rol' => 'cliente']);
     $clienteSinJugadas = User::factory()->create(['name' => 'Cliente Inactivo', 'rol' => 'cliente']);

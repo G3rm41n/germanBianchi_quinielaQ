@@ -2,35 +2,32 @@
 
 @section('content')
 @php
-    $filtrosActivos = collect(['inicial_nombre', 'inicial_apellido', 'min_jugadas', 'min_volumen'])
+    $filtrosActivos = collect(['buscar', 'min_jugadas', 'min_volumen', 'inicial_nombre', 'inicial_apellido'])
         ->filter(fn($key) => request()->filled($key))
         ->count();
-    $abecedario = range('A', 'Z');
 @endphp
 
 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
     <div>
         <h1 style="font-family: var(--font-display); font-size: 2rem; font-weight: 700; color: var(--color-gold); margin: 0 0 0.25rem 0;">Gestión de Clientes</h1>
-        <p style="color: var(--color-muted); font-size: 0.9rem; margin: 0;">Filtra clientes, analiza su volumen de juego e importa/exporta datos mediante planillas Excel (.xlsx).</p>
+        <p style="color: var(--color-muted); font-size: 0.9rem; margin: 0;">Filtra clientes en tiempo real, analiza su volumen de juego e importa/exporta datos mediante planillas Excel (.xlsx).</p>
     </div>
 
     {{-- Botones de Acción: Filtro, Exportar, Importar, Plantilla --}}
     <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-        @if($filtrosActivos > 0)
-            <a href="{{ route('admin.users.index') }}" class="btn btn-ghost btn-sm" style="color: var(--color-danger); border: 1px solid rgba(248,81,73,0.35);">
-                Limpiar Filtros ({{ $filtrosActivos }})
-            </a>
-        @endif
+        <a id="btn-limpiar-top" href="{{ route('admin.users.index') }}" class="btn btn-ghost btn-sm" style="color: var(--color-danger); border: 1px solid rgba(248,81,73,0.35); display: {{ $filtrosActivos > 0 ? 'inline-flex' : 'none' }};">
+            Limpiar Filtros (<span id="texto-contador-filtros-top">{{ $filtrosActivos }}</span>)
+        </a>
 
         <button type="button" onclick="toggleMenuFiltrosClientes()" class="btn {{ $filtrosActivos > 0 ? 'btn-primary' : 'btn-outline' }} btn-sm" style="display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600;">
             <span>🔍 Filtrar Clientes</span>
-            @if($filtrosActivos > 0)
-                <span style="background: rgba(255,255,255,0.25); border-radius: 9999px; padding: 0.1rem 0.45rem; font-size: 0.75rem;">{{ $filtrosActivos }}</span>
-            @endif
+            <span id="badge-filtros-clientes" style="background: rgba(255,255,255,0.25); border-radius: 9999px; padding: 0.1rem 0.45rem; font-size: 0.75rem; display: {{ $filtrosActivos > 0 ? 'inline-block' : 'none' }};">
+                {{ $filtrosActivos }}
+            </span>
             <span id="icono-chevron-clientes" style="font-size: 0.75rem; transition: transform 0.2s;">{{ $filtrosActivos > 0 ? '▲' : '▼' }}</span>
         </button>
 
-        <a href="{{ route('admin.users.exportar', request()->query()) }}" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 0.4rem;" title="Exporta los clientes actuales y sus jugadas detalladas a un archivo Excel">
+        <a id="btn-exportar-excel" href="{{ route('admin.users.exportar', request()->query()) }}" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 0.4rem;" title="Exporta los clientes actuales y sus jugadas detalladas a un archivo Excel">
             <span>📊 Exportar Excel</span>
         </a>
 
@@ -44,55 +41,78 @@
     </div>
 </div>
 
-{{-- Panel Desplegable de Filtros --}}
+{{-- Panel Desplegable de Filtros con Búsqueda en Tiempo Real --}}
 <div id="menu-filtros-clientes" style="display: {{ $filtrosActivos > 0 ? 'block' : 'none' }}; margin-bottom: 1.5rem;">
     <div class="card" style="padding: 1.25rem; background-color: var(--color-surface2); border: 1px solid var(--color-border);">
-        <form method="GET" action="{{ route('admin.users.index') }}" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)) auto; gap: 1rem; align-items: flex-end;">
+        <form id="form-filtros-clientes" method="GET" action="{{ route('admin.users.index') }}" style="display: grid; grid-template-columns: minmax(260px, 2fr) minmax(140px, 1fr) minmax(160px, 1fr) auto; gap: 1rem; align-items: flex-end;">
             
-            {{-- Filtro Inicial Nombre --}}
+            {{-- Búsqueda de Texto Manual (Nombre y Apellido) en Tiempo Real --}}
             <div>
-                <label style="display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); margin-bottom: 0.35rem; letter-spacing: 0.05em;">
-                    Inicial Nombre
+                <label for="input-buscar-cliente" style="display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); margin-bottom: 0.35rem; letter-spacing: 0.05em;">
+                    Búsqueda de Cliente (Nombre o Apellido)
                 </label>
-                <select name="inicial_nombre" class="form-input" style="font-size: 0.85rem; padding: 0.5rem 0.75rem; width: 100%;">
-                    <option value="">Todas (A-Z)</option>
-                    @foreach($abecedario as $letra)
-                        <option value="{{ $letra }}" {{ request('inicial_nombre') === $letra ? 'selected' : '' }}>
-                            {{ $letra }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-
-            {{-- Filtro Inicial Apellido --}}
-            <div>
-                <label style="display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); margin-bottom: 0.35rem; letter-spacing: 0.05em;">
-                    Inicial Apellido
-                </label>
-                <select name="inicial_apellido" class="form-input" style="font-size: 0.85rem; padding: 0.5rem 0.75rem; width: 100%;">
-                    <option value="">Todas (A-Z)</option>
-                    @foreach($abecedario as $letra)
-                        <option value="{{ $letra }}" {{ request('inicial_apellido') === $letra ? 'selected' : '' }}>
-                            {{ $letra }}
-                        </option>
-                    @endforeach
-                </select>
+                <div style="position: relative;">
+                    <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--color-muted); font-size: 0.85rem; pointer-events: none;">🔍</span>
+                    <input 
+                        type="text" 
+                        id="input-buscar-cliente" 
+                        name="buscar" 
+                        value="{{ request('buscar') }}" 
+                        placeholder="Escribe letras para buscar en tiempo real (ej: Juan Pérez)..." 
+                        class="form-input" 
+                        style="font-size: 0.85rem; padding: 0.5rem 2.2rem 0.5rem 2.2rem; width: 100%;" 
+                        autocomplete="off"
+                    >
+                    {{-- Botón para borrar el texto escrito --}}
+                    <button 
+                        type="button" 
+                        id="btn-borrar-busqueda" 
+                        onclick="limpiarTextoBusqueda()" 
+                        style="display: {{ request('buscar') ? 'inline-flex' : 'none' }}; position: absolute; right: 0.65rem; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: var(--color-muted); cursor: pointer; font-size: 0.9rem; padding: 0.2rem;" 
+                        title="Borrar texto"
+                    >
+                        ✕
+                    </button>
+                    {{-- Indicador de carga en vivo --}}
+                    <span id="spinner-busqueda" style="display: none; position: absolute; right: 0.65rem; top: 50%; transform: translateY(-50%); font-size: 0.75rem; color: var(--color-gold); font-weight: 600;">
+                        ⏳
+                    </span>
+                </div>
             </div>
 
             {{-- Filtro Mínimo de Jugadas --}}
             <div>
-                <label style="display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); margin-bottom: 0.35rem; letter-spacing: 0.05em;">
+                <label for="input-min-jugadas" style="display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); margin-bottom: 0.35rem; letter-spacing: 0.05em;">
                     Jugadas desde (≥)
                 </label>
-                <input type="number" name="min_jugadas" min="0" placeholder="Ej: 5" value="{{ request('min_jugadas') }}" class="form-input" style="font-size: 0.85rem; padding: 0.5rem 0.75rem; width: 100%;">
+                <input 
+                    type="number" 
+                    id="input-min-jugadas" 
+                    name="min_jugadas" 
+                    min="0" 
+                    placeholder="Ej: 5" 
+                    value="{{ request('min_jugadas') }}" 
+                    class="form-input" 
+                    style="font-size: 0.85rem; padding: 0.5rem 0.75rem; width: 100%;"
+                >
             </div>
 
             {{-- Filtro Volumen de Pesos --}}
             <div>
-                <label style="display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); margin-bottom: 0.35rem; letter-spacing: 0.05em;">
+                <label for="input-min-volumen" style="display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--color-muted); margin-bottom: 0.35rem; letter-spacing: 0.05em;">
                     Volumen desde ($ ≥)
                 </label>
-                <input type="number" name="min_volumen" min="0" step="100" placeholder="Ej: 10000" value="{{ request('min_volumen') }}" class="form-input" style="font-size: 0.85rem; padding: 0.5rem 0.75rem; width: 100%;">
+                <input 
+                    type="number" 
+                    id="input-min-volumen" 
+                    name="min_volumen" 
+                    min="0" 
+                    step="100" 
+                    placeholder="Ej: 10000" 
+                    value="{{ request('min_volumen') }}" 
+                    class="form-input" 
+                    style="font-size: 0.85rem; padding: 0.5rem 0.75rem; width: 100%;"
+                >
             </div>
 
             {{-- Botones Aplicar / Limpiar --}}
@@ -100,81 +120,17 @@
                 <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1.25rem; font-size: 0.85rem; white-space: nowrap;">
                     Aplicar
                 </button>
-                @if($filtrosActivos > 0)
-                    <a href="{{ route('admin.users.index') }}" class="btn btn-ghost" style="padding: 0.5rem 0.75rem; font-size: 0.85rem;">
-                        Limpiar
-                    </a>
-                @endif
+                <button type="button" id="btn-limpiar-form" onclick="limpiarTodosFiltros()" class="btn btn-ghost" style="padding: 0.5rem 0.75rem; font-size: 0.85rem; display: {{ $filtrosActivos > 0 ? 'inline-block' : 'none' }};">
+                    Limpiar
+                </button>
             </div>
         </form>
     </div>
 </div>
 
-{{-- Tabla de Clientes --}}
-<div class="card" style="padding: 0; overflow: hidden;">
-    <div style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; background-color: rgba(255,255,255,0.01);">
-        <span style="font-size: 0.85rem; color: var(--color-muted);">
-            Mostrando <strong>{{ $users->total() }}</strong> clientes registrados
-            @if($filtrosActivos > 0)
-                (filtrados con {{ $filtrosActivos }} {{ $filtrosActivos === 1 ? 'criterio' : 'criterios' }})
-            @endif
-        </span>
-    </div>
-
-    <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; color: var(--color-text);">
-            <thead>
-                <tr style="background-color: rgba(0,0,0,0.2); border-bottom: 1px solid var(--color-border);">
-                    <th style="padding: 1rem; text-align: left; color: var(--color-muted); font-size: 0.8rem; text-transform: uppercase;">ID</th>
-                    <th style="padding: 1rem; text-align: left; color: var(--color-muted); font-size: 0.8rem; text-transform: uppercase;">Cliente</th>
-                    <th style="padding: 1rem; text-align: right; color: var(--color-muted); font-size: 0.8rem; text-transform: uppercase;">Saldo Actual</th>
-                    <th style="padding: 1rem; text-align: center; color: var(--color-muted); font-size: 0.8rem; text-transform: uppercase;">Jugadas Totales</th>
-                    <th style="padding: 1rem; text-align: right; color: var(--color-muted); font-size: 0.8rem; text-transform: uppercase;">Volumen Jugado ($)</th>
-                    <th style="padding: 1rem; text-align: right; color: var(--color-muted); font-size: 0.8rem; text-transform: uppercase;">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($users as $u)
-                <tr style="border-bottom: 1px solid var(--color-border); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='var(--color-surface2)'" onmouseout="this.style.backgroundColor='transparent'">
-                    <td style="padding: 1rem; color: var(--color-muted);">#{{ $u->id }}</td>
-                    <td style="padding: 1rem;">
-                        <strong style="color: var(--color-text); font-size: 0.95rem;">{{ $u->name }}</strong><br>
-                        <span style="color: var(--color-muted); font-size: 0.8rem;">{{ $u->email }} | DNI: {{ $u->dni ?? 'S/D' }}</span>
-                    </td>
-                    <td style="padding: 1rem; text-align: right; font-weight: 600; color: {{ ($u->saldo ?? 0) > 0 ? 'var(--color-success)' : 'var(--color-muted)' }};">
-                        ${{ number_format($u->saldo ?? 0, 2, ',', '.') }}
-                    </td>
-                    <td style="padding: 1rem; text-align: center; font-weight: bold; color: var(--color-primary);">
-                        {{ $u->jugadas_count }}
-                    </td>
-                    <td style="padding: 1rem; text-align: right; font-weight: 700; color: var(--color-gold);">
-                        ${{ number_format($u->jugadas_sum_monto_total ?? 0, 2, ',', '.') }}
-                    </td>
-                    <td style="padding: 1rem; text-align: right;">
-                        <a href="{{ route('admin.users.show', $u) }}" class="btn btn-primary btn-sm">Ver Detalle</a>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="6" style="text-align: center; padding: 3rem;">
-                        <span style="color: var(--color-muted); display: block; font-size: 1rem;">No se encontraron clientes con los filtros especificados.</span>
-                        @if($filtrosActivos > 0)
-                            <a href="{{ route('admin.users.index') }}" class="btn btn-outline btn-sm" style="margin-top: 1rem; display: inline-block;">
-                                Limpiar filtros aplicados
-                            </a>
-                        @endif
-                    </td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-    
-    @if($users->hasPages())
-        <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--color-border);">
-            {{ $users->links() }}
-        </div>
-    @endif
+{{-- Contenedor Reactivo de la Tabla de Clientes --}}
+<div id="contenedor-tabla-clientes">
+    @include('admin.users._table', ['users' => $users, 'filtrosActivos' => $filtrosActivos])
 </div>
 
 {{-- Modal para Importar Excel --}}
@@ -221,12 +177,18 @@
 </div>
 
 <script>
+    const baseUrlUsuarios = @json(route('admin.users.index'));
+    let temporizadorDebounce = null;
+    let controladorPeticion = null;
+
     function toggleMenuFiltrosClientes() {
         const menu = document.getElementById('menu-filtros-clientes');
         const chevron = document.getElementById('icono-chevron-clientes');
         if (menu.style.display === 'none' || menu.style.display === '') {
             menu.style.display = 'block';
             if (chevron) chevron.textContent = '▲';
+            const inputBuscar = document.getElementById('input-buscar-cliente');
+            if (inputBuscar) setTimeout(() => inputBuscar.focus(), 50);
         } else {
             menu.style.display = 'none';
             if (chevron) chevron.textContent = '▼';
@@ -235,23 +197,186 @@
 
     function abrirModalImportar() {
         const modal = document.getElementById('modal-importar-excel');
-        if (modal) {
-            modal.style.display = 'flex';
-        }
+        if (modal) modal.style.display = 'flex';
     }
 
     function cerrarModalImportar() {
         const modal = document.getElementById('modal-importar-excel');
-        if (modal) {
-            modal.style.display = 'none';
+        if (modal) modal.style.display = 'none';
+    }
+
+    window.addEventListener('click', function(e) {
+        const modal = document.getElementById('modal-importar-excel');
+        if (e.target === modal) cerrarModalImportar();
+    });
+
+    /**
+     * Ejecuta la consulta AJAX para actualizar la lista de clientes en tiempo real.
+     */
+    function ejecutarBusquedaEnTiempoReal(url = null) {
+        const inputBuscar = document.getElementById('input-buscar-cliente');
+        const inputMinJugadas = document.getElementById('input-min-jugadas');
+        const inputMinVolumen = document.getElementById('input-min-volumen');
+        const btnBorrar = document.getElementById('btn-borrar-busqueda');
+        const spinner = document.getElementById('spinner-busqueda');
+
+        // Mostrar / ocultar botón 'X' de borrar
+        if (btnBorrar) {
+            btnBorrar.style.display = (inputBuscar && inputBuscar.value.trim().length > 0) ? 'inline-flex' : 'none';
+        }
+
+        // Mostrar spinner
+        if (spinner) spinner.style.display = 'inline-block';
+
+        // Cancelar petición anterior si aún estaba pendiente
+        if (controladorPeticion) {
+            controladorPeticion.abort();
+        }
+        controladorPeticion = new AbortController();
+
+        let requestUrl = url;
+        if (!requestUrl) {
+            const params = new URLSearchParams();
+            if (inputBuscar && inputBuscar.value.trim()) {
+                params.set('buscar', inputBuscar.value.trim());
+            }
+            if (inputMinJugadas && inputMinJugadas.value.trim()) {
+                params.set('min_jugadas', inputMinJugadas.value.trim());
+            }
+            if (inputMinVolumen && inputMinVolumen.value.trim()) {
+                params.set('min_volumen', inputMinVolumen.value.trim());
+            }
+            requestUrl = `${baseUrlUsuarios}${params.toString() ? '?' + params.toString() : ''}`;
+        }
+
+        fetch(requestUrl, {
+            signal: controladorPeticion.signal,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Error al consultar datos');
+            return response.json();
+        })
+        .then(data => {
+            const contenedor = document.getElementById('contenedor-tabla-clientes');
+            if (contenedor && data.html) {
+                contenedor.innerHTML = data.html;
+            }
+
+            // Actualizar enlace de exportación Excel con los filtros vigentes
+            const btnExportar = document.getElementById('btn-exportar-excel');
+            if (btnExportar && data.export_url) {
+                btnExportar.href = data.export_url;
+            }
+
+            // Actualizar badges y contadores de filtros
+            actualizarIndicadoresFiltros(data.filtros_activos);
+
+            // Actualizar URL del navegador sin recargar
+            window.history.replaceState(null, '', requestUrl);
+        })
+        .catch(err => {
+            if (err.name !== 'AbortError') {
+                console.error('Error en búsqueda de clientes:', err);
+            }
+        })
+        .finally(() => {
+            if (spinner) spinner.style.display = 'none';
+        });
+    }
+
+    function actualizarIndicadoresFiltros(cantidad) {
+        const badge = document.getElementById('badge-filtros-clientes');
+        const btnLimpiarTop = document.getElementById('btn-limpiar-top');
+        const contadorTop = document.getElementById('texto-contador-filtros-top');
+        const btnLimpiarForm = document.getElementById('btn-limpiar-form');
+
+        if (cantidad > 0) {
+            if (badge) {
+                badge.textContent = cantidad;
+                badge.style.display = 'inline-block';
+            }
+            if (btnLimpiarTop) {
+                if (contadorTop) contadorTop.textContent = cantidad;
+                btnLimpiarTop.style.display = 'inline-flex';
+            }
+            if (btnLimpiarForm) {
+                btnLimpiarForm.style.display = 'inline-block';
+            }
+        } else {
+            if (badge) badge.style.display = 'none';
+            if (btnLimpiarTop) btnLimpiarTop.style.display = 'none';
+            if (btnLimpiarForm) btnLimpiarForm.style.display = 'none';
         }
     }
 
-    // Cerrar al hacer clic fuera del contenido del modal
-    window.addEventListener('click', function(e) {
-        const modal = document.getElementById('modal-importar-excel');
-        if (e.target === modal) {
-            cerrarModalImportar();
+    function limpiarTextoBusqueda() {
+        const inputBuscar = document.getElementById('input-buscar-cliente');
+        if (inputBuscar) {
+            inputBuscar.value = '';
+            inputBuscar.focus();
+        }
+        ejecutarBusquedaEnTiempoReal();
+    }
+
+    function limpiarTodosFiltros() {
+        const inputBuscar = document.getElementById('input-buscar-cliente');
+        const inputMinJugadas = document.getElementById('input-min-jugadas');
+        const inputMinVolumen = document.getElementById('input-min-volumen');
+
+        if (inputBuscar) inputBuscar.value = '';
+        if (inputMinJugadas) inputMinJugadas.value = '';
+        if (inputMinVolumen) inputMinVolumen.value = '';
+
+        ejecutarBusquedaEnTiempoReal();
+    }
+
+    // Inicializar listeners en el cliente
+    document.addEventListener('DOMContentLoaded', function () {
+        const inputBuscar = document.getElementById('input-buscar-cliente');
+        const inputMinJugadas = document.getElementById('input-min-jugadas');
+        const inputMinVolumen = document.getElementById('input-min-volumen');
+
+        if (inputBuscar) {
+            inputBuscar.addEventListener('input', function () {
+                clearTimeout(temporizadorDebounce);
+                temporizadorDebounce = setTimeout(() => {
+                    ejecutarBusquedaEnTiempoReal();
+                }, 250); // 250ms de debounce para fluidez en tiempo real
+            });
+        }
+
+        if (inputMinJugadas) {
+            inputMinJugadas.addEventListener('input', function () {
+                clearTimeout(temporizadorDebounce);
+                temporizadorDebounce = setTimeout(() => {
+                    ejecutarBusquedaEnTiempoReal();
+                }, 300);
+            });
+        }
+
+        if (inputMinVolumen) {
+            inputMinVolumen.addEventListener('input', function () {
+                clearTimeout(temporizadorDebounce);
+                temporizadorDebounce = setTimeout(() => {
+                    ejecutarBusquedaEnTiempoReal();
+                }, 300);
+            });
+        }
+
+        // Delegación de eventos para la paginación reactiva (clic en página 2, 3, etc.)
+        const contenedorTabla = document.getElementById('contenedor-tabla-clientes');
+        if (contenedorTabla) {
+            contenedorTabla.addEventListener('click', function (e) {
+                const link = e.target.closest('.pagination a, a[rel="next"], a[rel="prev"]');
+                if (link && link.href) {
+                    e.preventDefault();
+                    ejecutarBusquedaEnTiempoReal(link.href);
+                }
+            });
         }
     });
 </script>
