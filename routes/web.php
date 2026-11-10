@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\Admin\CierreCajaController;
 use App\Http\Controllers\Admin\ClienteExcelController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\JugadaAdminController;
 use App\Http\Controllers\Admin\PrecioController;
+use App\Http\Controllers\Admin\SorteoAdminController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
@@ -14,11 +16,16 @@ use App\Http\Controllers\Auth\VerificationController;
 use App\Http\Controllers\BilleteraController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\JugadaController;
+use App\Http\Controllers\SorteoPublicController;
 use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
 
 // Página de inicio pública
 Route::get('/', [HomeController::class, 'index'])->name('home');
+
+// Pizarra pública de resultados de sorteos oficiales
+Route::get('/sorteos', [SorteoPublicController::class, 'index'])->name('sorteos.index');
+Route::get('/sorteos/{sorteo}', [SorteoPublicController::class, 'show'])->name('sorteos.show');
 
 // Rutas de autenticación — solo para invitados (no autenticados)
 Route::middleware('guest')->group(function () {
@@ -71,8 +78,14 @@ Route::prefix('admin')->middleware(['auth', AdminMiddleware::class])->group(func
 
     Route::patch('/jugadas/{jugada}/estado', [JugadaAdminController::class, 'update'])->name('admin.jugadas.estado');
     Route::patch('/jugadas/{jugada}/resultado', [JugadaAdminController::class, 'actualizarResultado'])->name('admin.jugadas.resultado');
+    Route::post('/jugadas/bulk', [JugadaAdminController::class, 'bulkUpdate'])->name('admin.jugadas.bulk');
+    Route::post('/jugadas/bulk-hoy', [JugadaAdminController::class, 'bulkProcesarTodasHoy'])->name('admin.jugadas.bulk_hoy');
     Route::post('/jugadas/{jugada}/reenviar', [JugadaAdminController::class, 'reenviarNotificacion'])->name('admin.jugadas.reenviar');
     Route::delete('/limpiar', [JugadaAdminController::class, 'limpiarBaseDatos'])->name('admin.limpiar');
+
+    // Cierre de Caja y Arqueo Diario
+    Route::get('/caja', [CierreCajaController::class, 'index'])->name('admin.caja.index');
+    Route::get('/caja/pdf', [CierreCajaController::class, 'exportarPdf'])->name('admin.caja.pdf');
 
     Route::put('/precios/{tipo_juego}', [PrecioController::class, 'update'])->name('admin.precios.update');
 
@@ -82,4 +95,13 @@ Route::prefix('admin')->middleware(['auth', AdminMiddleware::class])->group(func
     Route::post('/usuarios/importar', [ClienteExcelController::class, 'importar'])->name('admin.users.importar');
     Route::get('/usuarios', [UserController::class, 'index'])->name('admin.users.index');
     Route::get('/usuarios/{user}', [UserController::class, 'show'])->name('admin.users.show');
+
+    // Motor de Sorteos Oficiales y Escrutinio Automático
+    Route::get('/sorteos', [SorteoAdminController::class, 'index'])->name('admin.sorteos.index');
+    Route::get('/sorteos/crear', [SorteoAdminController::class, 'create'])->name('admin.sorteos.create');
+    Route::post('/sorteos', [SorteoAdminController::class, 'store'])->name('admin.sorteos.store');
+    Route::get('/sorteos/{sorteo}', [SorteoAdminController::class, 'show'])->name('admin.sorteos.show');
+    Route::post('/sorteos/{sorteo}/escrutar', [SorteoAdminController::class, 'escrutar'])->name('admin.sorteos.escrutar');
+    Route::post('/sorteos/{sorteo}/revertir', [SorteoAdminController::class, 'revertir'])->name('admin.sorteos.revertir');
+    Route::delete('/sorteos/{sorteo}', [SorteoAdminController::class, 'destroy'])->name('admin.sorteos.destroy');
 });

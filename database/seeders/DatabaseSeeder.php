@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             PreciosSeeder::class,
             ClientesSeeder::class,
             JugadasSeeder::class,
+            SorteosSeeder::class,
         ]);
     }
 }

@@ -29,6 +29,12 @@
                                 Inicio
                             </a>
                         </li>
+                        <li>
+                            <a href="{{ route('sorteos.index') }}"
+                               class="{{ request()->routeIs('sorteos.*') ? 'active' : '' }}">
+                                Resultados
+                            </a>
+                        </li>
                         @if(auth()->user()->isAdmin())
                             <li>
                                 <a href="{{ route('admin.dashboard') }}"

@@ -95,6 +95,7 @@ class JugadaController extends Controller
                             'numero' => $item['numero'],
                             'posicion' => $pos,
                             'jurisdiccion' => $item['jurisdiccion'],
+                            'turno' => $item['turno'] ?? 'matutina',
                             'importe' => $item['importe'],
                         ]);
                     }

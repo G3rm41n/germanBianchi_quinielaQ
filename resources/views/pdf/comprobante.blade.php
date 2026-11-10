@@ -63,7 +63,7 @@
             <tbody>
                 @foreach($jugada->detallesQuiniela as $q)
                 <tr>
-                    <td><strong>Quiniela ({{ ucfirst($q->jurisdiccion) }})</strong></td>
+                    <td><strong>Quiniela ({{ ucfirst($q->jurisdiccion) }} - {{ ucfirst($q->turno ?? 'matutina') }})</strong></td>
                     <td>N° {{ $q->numero }} — Posición {{ $q->posicion }}</td>
                     <td style="text-align: right;">${{ number_format($q->importe, 2, ',', '.') }}</td>
                 </tr>

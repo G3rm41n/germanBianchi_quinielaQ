@@ -97,6 +97,17 @@
                             </div>
 
                             <div class="form-group">
+                                <label for="turno" class="form-label">Turno</label>
+                                <select id="turno" name="turno" class="form-input {{ $errors->has('turno') ? 'is-invalid' : '' }}">
+                                    <option value="matutina" {{ old('turno', 'matutina') == 'matutina' ? 'selected' : '' }}>Matutina</option>
+                                    <option value="previa" {{ old('turno') == 'previa' ? 'selected' : '' }}>La Previa</option>
+                                    <option value="primera" {{ old('turno') == 'primera' ? 'selected' : '' }}>Primera</option>
+                                    <option value="vespertina" {{ old('turno') == 'vespertina' ? 'selected' : '' }}>Vespertina</option>
+                                    <option value="nocturna" {{ old('turno') == 'nocturna' ? 'selected' : '' }}>Nocturna</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
                                 <label for="importe" class="form-label">Importe por posición ($)</label>
                                 <input type="number" id="importe" name="importe" class="form-input {{ $errors->has('importe') ? 'is-invalid' : '' }}" value="{{ old('importe') }}" placeholder="Ej: 500" min="1">
                             </div>

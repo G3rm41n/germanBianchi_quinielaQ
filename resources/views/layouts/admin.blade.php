@@ -21,6 +21,12 @@
                 <a href="{{ route('admin.dashboard') }}" class="admin-sidebar-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
                     📊 Dashboard
                 </a>
+                <a href="{{ route('admin.sorteos.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.sorteos.*') ? 'active' : '' }}">
+                    🎲 Sorteos y Escrutinio
+                </a>
+                <a href="{{ route('admin.caja.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.caja.*') ? 'active' : '' }}">
+                    💵 Cierre de Caja
+                </a>
                 <a href="{{ route('admin.users.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
                     👥 Clientes y Jugadas
                 </a>

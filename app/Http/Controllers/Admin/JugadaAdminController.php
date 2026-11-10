@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\NotificacionResultadoMail;
 use App\Mail\NuevaJugadaMail;
 use App\Models\AuditLog;
 use App\Models\Jugada;
@@ -22,6 +23,14 @@ class JugadaAdminController extends Controller
         ]);
 
         $jugada->update($validated);
+
+        if ($validated['estado'] === 'procesado' && $jugada->user?->email) {
+            try {
+                Mail::to($jugada->user->email)->send(new NotificacionResultadoMail($jugada, 'procesada'));
+            } catch (\Throwable) {
+                // No romper la respuesta si falla el envío SMTP
+            }
+        }
 
         return back()->with('success', 'Estado de la jugada actualizado correctamente.');
     }
@@ -50,6 +59,14 @@ class JugadaAdminController extends Controller
             }
         });
 
+        if ($jugada->user?->email && in_array($validated['resultado'], ['ganadora', 'no_ganadora'])) {
+            try {
+                Mail::to($jugada->user->email)->send(new NotificacionResultadoMail($jugada, 'resultado'));
+            } catch (\Throwable) {
+                // No romper la respuesta si falla el envío SMTP
+            }
+        }
+
         AuditLog::create([
             'user_id' => auth()->id(),
             'accion' => 'resultado_actualizado',
@@ -58,6 +75,81 @@ class JugadaAdminController extends Controller
         ]);
 
         return back()->with('success', 'Resultado y premio de la jugada actualizados correctamente.');
+    }
+
+    public function bulkUpdate(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required', 'integer', 'exists:jugadas,id'],
+            'estado' => ['required', Rule::in(['pendiente', 'procesado', 'error_envio'])],
+        ]);
+
+        $count = DB::transaction(function () use ($validated) {
+            $jugadas = Jugada::with('user')->whereIn('id', $validated['ids'])->get();
+
+            foreach ($jugadas as $jugada) {
+                $jugada->update(['estado' => $validated['estado']]);
+
+                if ($validated['estado'] === 'procesado' && $jugada->user?->email) {
+                    try {
+                        Mail::to($jugada->user->email)->send(new NotificacionResultadoMail($jugada, 'procesada'));
+                    } catch (\Throwable) {
+                        // Ignorar fallo de envío en lote
+                    }
+                }
+            }
+
+            AuditLog::create([
+                'user_id' => auth()->id(),
+                'accion' => 'jugadas_bulk_update',
+                'descripcion' => "Actualización en lote de {$jugadas->count()} jugadas a estado: {$validated['estado']}",
+                'ip' => request()->ip() ?: '127.0.0.1',
+            ]);
+
+            return $jugadas->count();
+        });
+
+        return back()->with('success', "Se actualizaron exitosamente {$count} jugadas a estado '".strtoupper($validated['estado'])."'.");
+    }
+
+    public function bulkProcesarTodasHoy()
+    {
+        $count = DB::transaction(function () {
+            $jugadas = Jugada::with('user')
+                ->whereDate('created_at', today())
+                ->where('estado', 'pendiente')
+                ->get();
+
+            foreach ($jugadas as $jugada) {
+                $jugada->update(['estado' => 'procesado']);
+
+                if ($jugada->user?->email) {
+                    try {
+                        Mail::to($jugada->user->email)->send(new NotificacionResultadoMail($jugada, 'procesada'));
+                    } catch (\Throwable) {
+                        // Ignorar fallo de envío
+                    }
+                }
+            }
+
+            if ($jugadas->isNotEmpty()) {
+                AuditLog::create([
+                    'user_id' => auth()->id(),
+                    'accion' => 'jugadas_bulk_procesar_hoy',
+                    'descripcion' => "Se marcaron como PROCESADAS todas las {$jugadas->count()} jugadas pendientes del día.",
+                    'ip' => request()->ip() ?: '127.0.0.1',
+                ]);
+            }
+
+            return $jugadas->count();
+        });
+
+        if ($count === 0) {
+            return back()->with('info', 'No se encontraron jugadas pendientes emitidas en el día de hoy.');
+        }
+
+        return back()->with('success', "¡Excelente! Se procesaron en lote todas las {$count} jugadas pendientes del día.");
     }
 
     public function reenviarNotificacion(Jugada $jugada)

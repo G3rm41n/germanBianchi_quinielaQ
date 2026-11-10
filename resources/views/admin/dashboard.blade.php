@@ -189,7 +189,14 @@
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--color-border); padding-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
         <h3 style="font-family: var(--font-display); font-size: 1.25rem; color: var(--color-text); margin: 0;">Historial de Jugadas y Escrutinio</h3>
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <form action="{{ route('admin.jugadas.bulk_hoy') }}" method="POST" onsubmit="return confirm('¿Marcar como PROCESADAS todas las boletas pendientes emitidas hoy? Se notificará a los usuarios por correo.');" style="display: inline;">
+                @csrf
+                <button type="submit" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 600; color: var(--color-gold); border-color: var(--color-gold);">
+                    ⚡ Procesar todas las de hoy
+                </button>
+            </form>
+
             @if($filtrosActivosAdmin > 0)
                 <a href="{{ route('admin.dashboard') }}" class="btn btn-ghost btn-sm" style="color: var(--color-danger); border: 1px solid rgba(248,81,73,0.35);">
                     Limpiar Filtros ({{ $filtrosActivosAdmin }})
@@ -281,6 +288,9 @@
         <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; color: var(--color-text);">
             <thead>
                 <tr>
+                    <th style="padding: 1rem 0.5rem 1rem 1rem; border-bottom: 1px solid var(--color-border); text-align: center; width: 35px;">
+                        <input type="checkbox" id="check-all-jugadas" title="Seleccionar todas las visibles" style="cursor: pointer; width: 16px; height: 16px;">
+                    </th>
                     <th style="padding: 1rem; border-bottom: 1px solid var(--color-border); text-align: left; color: var(--color-muted);">ID / Fecha</th>
                     <th style="padding: 1rem; border-bottom: 1px solid var(--color-border); text-align: left; color: var(--color-muted);">Cliente</th>
                     <th style="padding: 1rem; border-bottom: 1px solid var(--color-border); text-align: left; color: var(--color-muted);">Apuestas</th>
@@ -293,6 +303,14 @@
             <tbody>
                 @forelse($jugadas as $jugada)
                 <tr style="border-bottom: 1px solid var(--color-border); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='var(--color-surface2)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <td style="padding: 1rem 0.5rem 1rem 1rem; text-align: center;">
+                        <input type="checkbox"
+                               class="check-jugada"
+                               value="{{ $jugada->id }}"
+                               data-monto="{{ $jugada->monto_total }}"
+                               data-texto="{{ e($jugada->texto_transcripcion) }}"
+                               style="cursor: pointer; width: 16px; height: 16px;">
+                    </td>
                     <td style="padding: 1rem;">
                         <strong style="color: var(--color-primary);">#{{ str_pad($jugada->id, 8, '0', STR_PAD_LEFT) }}</strong><br>
                         <span style="color: var(--color-muted); font-size: 0.75rem;">{{ $jugada->created_at->format('d/m/Y H:i') }}</span>
@@ -304,7 +322,7 @@
                     <td style="padding: 1rem;">
                         <ul style="margin: 0; padding-left: 1rem; color: var(--color-muted);">
                             @foreach($jugada->detallesQuiniela as $q)
-                                <li>Quiniela: Nº {{ $q->numero }} (Pos: {{ $q->posicion }})</li>
+                                <li>Quiniela ({{ ucfirst($q->jurisdiccion) }} - {{ ucfirst($q->turno ?? 'matutina') }}): Nº {{ $q->numero }} (Pos: {{ $q->posicion }})</li>
                             @endforeach
                             @foreach($jugada->detallesQuini6 as $q)
                                 <li>Quini 6: {{ implode(', ', $q->numeros) }}</li>
@@ -353,7 +371,12 @@
                     </td>
                     <td style="padding: 1rem; text-align: right;">
                         <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
-                            <a href="{{ route('jugadas.pdf', $jugada) }}" target="_blank" class="btn btn-outline btn-sm">PDF</a>
+                            <div style="display: flex; gap: 0.35rem; align-items: center;">
+                                <button type="button" class="btn btn-ghost btn-sm btn-copiar-linea" data-texto="{{ e($jugada->texto_transcripcion) }}" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border: 1px solid var(--color-border); color: var(--color-gold);" title="Copiar datos para terminal de lotería">
+                                    📋 Copiar
+                                </button>
+                                <a href="{{ route('jugadas.pdf', $jugada) }}" target="_blank" class="btn btn-outline btn-sm">PDF</a>
+                            </div>
                             
                             <form action="{{ route('admin.jugadas.estado', $jugada) }}" method="POST">
                                 @csrf
@@ -376,7 +399,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 3rem;">
+                    <td colspan="8" style="text-align: center; padding: 3rem;">
                         <span style="color: var(--color-muted); display: block; margin-top: 1rem;">No hay jugadas registradas en el sistema.</span>
                     </td>
                 </tr>
@@ -408,4 +431,140 @@
     </div>
 </div>
 
+{{-- Barra Flotante de Acciones en Lote (Sticky Bulk Bar) --}}
+<div id="bulk-bar" style="display: none; position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); z-index: 1000; background: #1e293b; border: 2px solid var(--color-gold); border-radius: 12px; padding: 0.85rem 1.5rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.6); align-items: center; gap: 1.25rem; flex-wrap: wrap;">
+    <div style="font-size: 0.9rem; font-weight: 700; color: var(--color-text);">
+        <span id="bulk-count">0</span> boletas seleccionadas (<span id="bulk-total" style="color: var(--color-gold);">$0,00</span>)
+    </div>
+    <div style="display: flex; gap: 0.6rem; align-items: center;">
+        <form id="form-bulk-procesar" method="POST" action="{{ route('admin.jugadas.bulk') }}" onsubmit="return confirm('¿Marcar las boletas seleccionadas como PROCESADAS? Se notificará a los usuarios por correo.');">
+            @csrf
+            <input type="hidden" name="estado" value="procesado">
+            <div id="bulk-inputs-container"></div>
+            <button type="submit" class="btn btn-primary btn-sm" style="font-weight: 700;">
+                ✓ Marcar como PROCESADAS
+            </button>
+        </form>
+        <button type="button" id="btn-copiar-lote" class="btn btn-outline btn-sm" style="color: var(--color-gold); border-color: var(--color-gold);">
+            📋 Copiar Lote
+        </button>
+        <button type="button" id="btn-deseleccionar-todo" class="btn btn-ghost btn-sm" style="color: var(--color-muted); font-size: 0.8rem;">
+            Desmarcar
+        </button>
+    </div>
+</div>
+
+{{-- Toast Flotante de Copiado --}}
+<div id="toast-copiado" style="display: none; position: fixed; top: 25px; right: 25px; z-index: 2000; background: #22c55e; color: #0f172a; font-weight: 700; padding: 0.75rem 1.25rem; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4); font-size: 0.85rem; align-items: center; gap: 0.5rem;">
+    ✓ ¡Datos copiados al portapapeles!
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const checkAll = document.getElementById('check-all-jugadas');
+    const checkboxes = document.querySelectorAll('.check-jugada');
+    const bulkBar = document.getElementById('bulk-bar');
+    const bulkCount = document.getElementById('bulk-count');
+    const bulkTotal = document.getElementById('bulk-total');
+    const bulkInputsContainer = document.getElementById('bulk-inputs-container');
+    const btnCopiarLote = document.getElementById('btn-copiar-lote');
+    const btnDeseleccionar = document.getElementById('btn-deseleccionar-todo');
+    const toast = document.getElementById('toast-copiado');
+
+    function showToast(mensaje = '¡Datos copiados al portapapeles!') {
+        toast.textContent = `✓ ${mensaje}`;
+        toast.style.display = 'flex';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 2500);
+    }
+
+    function copiarAlPortapapeles(texto) {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(texto).then(() => showToast());
+        } else {
+            // Fallback para entornos locales sin SSL
+            const ta = document.createElement('textarea');
+            ta.value = texto;
+            ta.style.position = 'fixed';
+            ta.style.left = '-999999px';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showToast();
+        }
+    }
+
+    // Copiar línea individual
+    document.querySelectorAll('.btn-copiar-linea').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const texto = e.currentTarget.dataset.texto;
+            copiarAlPortapapeles(texto);
+        });
+    });
+
+    // Actualizar barra flotante
+    function actualizarBarraLote() {
+        const seleccionadas = Array.from(checkboxes).filter(cb => cb.checked);
+        const count = seleccionadas.length;
+
+        if (count > 0) {
+            let total = 0;
+            bulkInputsContainer.innerHTML = '';
+
+            seleccionadas.forEach(cb => {
+                total += parseFloat(cb.dataset.monto || 0);
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'ids[]';
+                input.value = cb.value;
+                bulkInputsContainer.appendChild(input);
+            });
+
+            bulkCount.textContent = count;
+            bulkTotal.textContent = '$' + total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            bulkBar.style.display = 'flex';
+        } else {
+            bulkBar.style.display = 'none';
+            bulkInputsContainer.innerHTML = '';
+        }
+
+        if (checkAll) {
+            checkAll.checked = (count === checkboxes.length && count > 0);
+        }
+    }
+
+    if (checkAll) {
+        checkAll.addEventListener('change', () => {
+            checkboxes.forEach(cb => cb.checked = checkAll.checked);
+            actualizarBarraLote();
+        });
+    }
+
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', actualizarBarraLote);
+    });
+
+    if (btnDeseleccionar) {
+        btnDeseleccionar.addEventListener('click', () => {
+            checkboxes.forEach(cb => cb.checked = false);
+            if (checkAll) checkAll.checked = false;
+            actualizarBarraLote();
+        });
+    }
+
+    if (btnCopiarLote) {
+        btnCopiarLote.addEventListener('click', () => {
+            const seleccionadas = Array.from(checkboxes).filter(cb => cb.checked);
+            if (seleccionadas.length === 0) return;
+
+            const textos = seleccionadas.map(cb => cb.dataset.texto).filter(t => t);
+            const bloqueFinal = textos.join("\n---\n");
+            copiarAlPortapapeles(bloqueFinal);
+            showToast(`¡${seleccionadas.length} boletas copiadas al portapapeles!`);
+        });
+    }
+});
+</script>
 @endsection

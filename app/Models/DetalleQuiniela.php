@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['jugada_id', 'numero', 'posicion', 'jurisdiccion', 'importe'])]
+#[Fillable(['jugada_id', 'numero', 'posicion', 'jurisdiccion', 'turno', 'importe'])]
 class DetalleQuiniela extends Model
 {
     use HasFactory;

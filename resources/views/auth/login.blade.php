@@ -72,15 +72,6 @@
             <a href="{{ route('register') }}" id="link-to-register">Registrate gratis</a>
         </div>
 
-        {{-- Hint para desarrollo --}}
-        @if(app()->isLocal())
-            <div class="alert alert-warning" style="margin-top: 1.5rem; font-size: 0.78rem;" role="note">
-                <strong>🛠️ Modo desarrollo:</strong><br>
-                Admin: <code>admin@agencia5801.local</code> / <code>Admin1234!</code><br>
-                Clientes: <code>password</code> (ver BD)
-            </div>
-        @endif
-
     </div>
 </div>
 @endsection

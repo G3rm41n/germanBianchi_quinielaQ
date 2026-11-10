@@ -352,19 +352,19 @@
                                 <td style="padding: 1.25rem 1.5rem; font-size: 0.85rem; color: var(--color-muted);">
                                     <ul style="margin: 0; padding-left: 1.25rem;">
                                         @foreach($jugada->detallesQuiniela as $q)
-                                            <li>Quiniela: Nº {{ $q->numero }} (Pos: {{ $q->posicion }})</li>
+                                            <li>Quiniela ({{ ucfirst($q->jurisdiccion) }} - {{ ucfirst($q->turno ?? 'matutina') }}): Nº {{ $q->numero }} (Pos: {{ $q->posicion }})</li>
                                         @endforeach
                                         @foreach($jugada->detallesQuini6 as $q)
-                                            <li>Quini 6</li>
+                                            <li>Quini 6 ({{ implode(', ', $q->numeros) }})</li>
                                         @endforeach
                                         @foreach($jugada->detallesLotoPlus as $q)
-                                            <li>Loto Plus</li>
+                                            <li>Loto Plus ({{ implode(', ', $q->numeros) }} + {{ $q->numero_plus }})</li>
                                         @endforeach
                                         @foreach($jugada->detallesLoto5 as $q)
-                                            <li>Loto 5</li>
+                                            <li>Loto 5 ({{ implode(', ', $q->numeros) }})</li>
                                         @endforeach
                                         @foreach($jugada->detallesPoceada as $q)
-                                            <li>Poceada</li>
+                                            <li>Poceada ({{ implode(', ', $q->numeros) }})</li>
                                         @endforeach
                                     </ul>
                                 </td>
@@ -380,6 +380,20 @@
                                             <span style="font-size: 0.85rem; font-weight: 700; color: var(--color-success);">
                                                 Premio: +${{ number_format($jugada->monto_premio, 2, ',', '.') }}
                                             </span>
+                                            @if(!empty($jugada->detalle_escrutinio))
+                                                @foreach($jugada->detalle_escrutinio as $d)
+                                                    @if(!empty($d['premio']) && $d['premio'] > 0)
+                                                        <span style="font-size: 0.75rem; color: #3fb950;">
+                                                            ✓ Acertó {{ $d['numero'] ?? implode(',', $d['numeros_acertados'] ?? []) }}
+                                                        </span>
+                                                    @endif
+                                                @endforeach
+                                            @endif
+                                            @if($jugada->sorteo_id)
+                                                <a href="{{ route('sorteos.show', $jugada->sorteo_id) }}" style="font-size: 0.75rem; color: var(--color-muted); text-decoration: underline;">
+                                                    Ver sorteo #{{ $jugada->sorteo_id }}
+                                                </a>
+                                            @endif
                                         </div>
                                     @elseif($jugada->resultado === 'no_ganadora')
                                         <span style="display: inline-block; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; background: rgba(248, 81, 73, 0.15); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.3);">

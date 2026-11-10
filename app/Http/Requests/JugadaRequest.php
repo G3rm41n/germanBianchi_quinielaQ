@@ -32,6 +32,7 @@ class JugadaRequest extends FormRequest
             'cart.*.posiciones' => ['required_if:cart.*.modalidad,quiniela', 'nullable', 'array', 'min:1'],
             'cart.*.posiciones.*' => ['integer', 'between:1,20'],
             'cart.*.jurisdiccion' => ['required_if:cart.*.modalidad,quiniela', 'nullable', 'in:nacion,provincia,santa_fe,cordoba'],
+            'cart.*.turno' => ['nullable', 'in:previa,primera,matutina,vespertina,nocturna'],
             'cart.*.importe' => ['required_if:cart.*.modalidad,quiniela', 'nullable', 'numeric', 'min:1'],
 
             // Quini 6

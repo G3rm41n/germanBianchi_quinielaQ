@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['user_id', 'monto_total', 'estado', 'idempotency_token', 'resultado', 'monto_premio'])]
+#[Fillable(['user_id', 'monto_total', 'estado', 'idempotency_token', 'resultado', 'monto_premio', 'sorteo_id', 'detalle_escrutinio'])]
 class Jugada extends Model
 {
     use HasFactory;
@@ -25,12 +25,18 @@ class Jugada extends Model
             'monto_total' => 'decimal:2',
             'monto_premio' => 'decimal:2',
             'precio_unitario_snapshot' => 'decimal:2',
+            'detalle_escrutinio' => 'array',
         ];
     }
 
     // =========================================================================
     // Relations
     // =========================================================================
+
+    public function sorteo(): BelongsTo
+    {
+        return $this->belongsTo(Sorteo::class);
+    }
 
     public function user(): BelongsTo
     {
@@ -148,5 +154,44 @@ class Jugada extends Model
     public function esGanadora(): bool
     {
         return $this->resultado === 'ganadora';
+    }
+
+    /**
+     * Genera la cadena de texto estandarizada para transcripción rápida en terminales de lotería.
+     */
+    public function getTextoTranscripcionAttribute(): string
+    {
+        $partes = [];
+        $ticketId = str_pad((string) $this->id, 8, '0', STR_PAD_LEFT);
+        $cliente = $this->user ? "{$this->user->name} (DNI {$this->user->dni})" : 'Cliente';
+
+        foreach ($this->detallesQuiniela as $q) {
+            $jur = strtoupper($q->jurisdiccion ?? 'NACION');
+            $tur = strtoupper($q->turno ?? 'MATUTINA');
+            $imp = (float) $q->importe == (int) $q->importe ? (string) (int) $q->importe : number_format($q->importe, 2, ',', '.');
+            $partes[] = "[#{$ticketId}] QUINIELA ({$jur} - {$tur}) | Nº {$q->numero} a los {$q->posicion} (\${$imp}) | {$cliente}";
+        }
+
+        foreach ($this->detallesQuini6 as $q) {
+            $nums = implode('-', $q->numeros ?? []);
+            $partes[] = "[#{$ticketId}] QUINI 6 | {$nums} | {$cliente}";
+        }
+
+        foreach ($this->detallesLotoPlus as $q) {
+            $nums = implode('-', $q->numeros ?? []);
+            $partes[] = "[#{$ticketId}] LOTO PLUS | {$nums} (+PLUS {$q->numero_plus}) | {$cliente}";
+        }
+
+        foreach ($this->detallesLoto5 as $q) {
+            $nums = implode('-', $q->numeros ?? []);
+            $partes[] = "[#{$ticketId}] LOTO 5 | {$nums} | {$cliente}";
+        }
+
+        foreach ($this->detallesPoceada as $q) {
+            $nums = implode('-', $q->numeros ?? []);
+            $partes[] = "[#{$ticketId}] POCEADA | {$nums} | {$cliente}";
+        }
+
+        return ! empty($partes) ? implode("\n", $partes) : "[#{$ticketId}] TICKET \${$this->monto_total} | {$cliente}";
     }
 }

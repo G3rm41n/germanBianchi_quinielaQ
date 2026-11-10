@@ -68,12 +68,15 @@ class JugadasSeeder extends Seeder
                     $posElegida = $posiciones[array_rand($posiciones)];
                     $importe = 500.0;
                     $jurisdicciones = ['nacion', 'provincia', 'santa_fe', 'cordoba'];
+                    $turnos = ['matutina', 'vespertina', 'nocturna', 'primera', 'previa'];
+                    $turnoElegido = $turnos[array_rand($turnos)];
 
                     for ($p = 1; $p <= $posElegida; $p++) {
                         $jugada->detallesQuiniela()->create([
                             'numero' => (string) rand(10, 9999),
                             'posicion' => $p,
                             'jurisdiccion' => $jurisdicciones[array_rand($jurisdicciones)],
+                            'turno' => $turnoElegido,
                             'importe' => $importe,
                         ]);
                     }

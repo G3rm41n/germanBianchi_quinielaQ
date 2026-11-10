@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inputs de formularios
     const inputQuinielaNum = document.getElementById('numero');
     const inputQuinielaJur = document.getElementById('jurisdiccion');
+    const inputQuinielaTur = document.getElementById('turno');
     const inputQuinielaImp = document.getElementById('importe');
     const inputLotoPlusPlus = document.getElementById('numero_plus');
     const selectRangoPos = document.getElementById('rango_posiciones');
@@ -214,6 +215,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 inputQuinielaJur.value = jurisdicciones[Math.floor(Math.random() * jurisdicciones.length)];
             }
 
+            const turnos = ['previa', 'primera', 'matutina', 'vespertina', 'nocturna'];
+            if (inputQuinielaTur) {
+                inputQuinielaTur.value = turnos[Math.floor(Math.random() * turnos.length)];
+            }
+
             const importes = [500, 1000, 1500, 2000];
             if (inputQuinielaImp) {
                 inputQuinielaImp.value = importes[Math.floor(Math.random() * importes.length)];
@@ -363,7 +369,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             let label = '';
             if (item.modalidad === 'quiniela') {
-                label = `<strong>Quiniela (${item.jurisdiccion})</strong><br>Nº ${item.numero} | Posiciones: ${item.posiciones.join(', ')}`;
+                const turnoStr = item.turno ? ` - ${item.turno.toUpperCase()}` : '';
+                label = `<strong>Quiniela (${item.jurisdiccion.toUpperCase()}${turnoStr})</strong><br>Nº ${item.numero} | Posiciones: ${item.posiciones.join(', ')}`;
             } else if (item.modalidad === 'quini6') {
                 label = `<strong>Quini 6</strong><br>${item.numeros.join(', ')}`;
             } else if (item.modalidad === 'lotoplus') {
@@ -403,6 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
             item.numero = inputQuinielaNum.value;
             item.posiciones = [...state.selecciones.quiniela];
             item.jurisdiccion = inputQuinielaJur.value;
+            item.turno = inputQuinielaTur ? inputQuinielaTur.value : 'matutina';
             item.importe = parseFloat(inputQuinielaImp.value);
             item.costo = item.importe * item.posiciones.length;
         } else {
